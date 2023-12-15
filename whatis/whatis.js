@@ -1,7 +1,7 @@
 /**
  * Returns the type of a value.
  * @param {any} d - the value to check
- * @returns {string|number|boolean|symbol|undefined|null|object|function} - the type of the value
+ * @returns {string|number|boolean|symbol|undefined|null|function|Object} - the type of the value
  */
 export function whatis(d) {
    if (d === null) return 'null';
