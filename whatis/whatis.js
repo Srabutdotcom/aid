@@ -51,7 +51,3 @@ function subType(d, t) {
    //Object.defineProperty(Object.getPrototypeOf(Whatis),'valueOf',{value:function(){return t}})
    return new Whatis(d)
 }
-
-const regex = /(?<tagString>[`](?:(?=([\\])?)\1.)*?[`])|(?<string>["'](?:(?=([\\])?)\1.)*?["'])|(?<comment>^\s*\/\/.*$|^\/[*][\s\S]*[*]\/$)|(?<regex>[/](?<=[/]).*(?=[/])[/][dgimsuy]*)|(?<word>[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*)|(?<number>\d[\d._]*([eE][+/-]?)?\d+|\d[oOxXbB][\d_a-fA-F]*n?|\d[\d_]*n?)|(?<operator>(?<increment>[+]{2})|(?<decrement>[--]{2})|(?<aritmaticAssignment>[+\-*/%]=)|(?<exponentAssignment>[*]{2}=)|(?<aritmatic>[*]{2}|[+\-*/%])|(?<strictEquality>[=]{3})|(?<arrow>[=][>])|(?<equalTo>[=]{2})|(?<assignment>[=])|(?<strictNonEquality>![=]{2})|(?<notEqualTo>!=)|(?<nullishAssigment>[?]{2}=)|(?<nullish>[?]{2})|(?<greaterThanOrEqualTo>>=)|(?<unsignedRightShiftAssignment>[>]{3}=)|(?<unsignedRightShift>[>]{3})|(?<shiftAssignment>[><]{2}=)|(?<shift>[><]{2})|(?<greaterThan>>)|(?<lessThanOrEqualTo><=)|(?<lessThan><)|(?<logicalAssigment>[&|]{2}=)|(?<logical>[&|]{2})|(?<optionalChaining>[?][.])|(?<computedMemberAccess>(?<=(\w|[?][.])\s*)[\[])|(?<bitwiseAssignment>[&|^]=)|(?<bitwise>[&|^~])|(?<Not>[!]+)|(?<spread>[.]{3})|(?<braces>[}{)(\]\[])|(?<memberAccess>[.])|(?<questionMark>[?])|(?<comma>[,])|(?<colon>[:])|(?<hash>[#])|(?<backSlash>[\\])|(?<end>[;]+))/dgu;
-
-function chunker(script) { return [...script.matchAll(regex)] }
