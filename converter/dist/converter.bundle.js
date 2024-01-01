@@ -1,0 +1,1 @@
+function e(e){e=e.replace(/=+$/,"");return atob(e).toString("utf-8")}function r(e){const r=new Uint8Array(e);let t="";for(const e of r)t+=String.fromCharCode(e);return btoa(t).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")}const t=new TextDecoder,n=new TextEncoder;export{e as base64url_to_string,r as bufferToBase64URLString,t as decoder,n as encoder};

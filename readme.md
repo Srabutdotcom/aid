@@ -1,25 +1,30 @@
-# Aids
+# Aid
 ## _Javascript tools_
+![https://img.shields.io/github/v/tag/srabutdotcom/aid](https://img.shields.io/github/v/tag/srabutdotcom/aid) [![license](https://img.shields.io/github/license/srabutdotcom/aid
+)](https://img.shields.io/github/license/srabutdotcom/aid
+) [![download](https://img.shields.io/github/downloads/srabutdotcom/aid/v.1.0.1/total
+)](https://img.shields.io/github/downloads/srabutdotcom/aid/v.1.0.1/total
+)
 
-Aids merupakan kumpulan tools untuk mempermudah pengolahan javascript pada sisi _client_ maupun _server deno_. Beberapa tools yang sudah kami buat yaitu:
-- Whatis - untuk identifikasi _variable_ atau _object_.
-- Search - untuk mencari string pada _string_, _array_ maupun _object_
-- Converter - untuk konversi 
+### Fitur
+- Whatis - identifikasi _variable_ atau _object_.
+- Search - mencari string pada _string_, _array_ maupun _object_
+- Converter - konversi data
+- Fetch - unduh file menggunakan _readable (byte) stream_ termasuk unduh javascript tanpa takut error karena _mime type_ tidak sesuai.
 
 ## Petunjuk
 
-```js client
-import { whatis, searchString, encoder, decoder, bufferToBase64URLString, base64url_to_string } from 'https://deno.land/x/aids@v.1.0.0/dist/aids.bundle.js?source'
+```javascript
+import * as aid from 'https://deno.land/x/aids/dist/aids.bundle.js?source'
 
+const { whatis } = aid 
 whatis('test')=='string' // true
 const asyncFunc = whatis(async function as(){}) 
 asyncFunc == 'function' // true
 asyncFunc.subType() // AsyncFunction
 asyncFunc.name() // as
 ```
-Lebih lengkap dapat dilihat pada folder _/whatis/testwhatis.js_
 
-## License
-MIT
+Petunjuk lainnya dapat dilihat pada masing - masing direktori.
 
 
