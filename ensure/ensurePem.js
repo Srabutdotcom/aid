@@ -1,4 +1,4 @@
-const pemTypes = Object.freeze({
+export const pemTypes = Object.freeze({
    'RSA PRIVATE KEY': 'RSA PRIVATE KEY',
    'CERTIFICATE': 'CERTIFICATE',
    'RSA PUBLIC KEY': 'RSA PUBLIC KEY',
@@ -9,13 +9,15 @@ const pemTypes = Object.freeze({
    'NEW CERTIFICATE REQUEST': 'NEW CERTIFICATE REQUEST',
    'CERTIFICATE REQUEST': 'CERTIFICATE REQUEST',
    'X509 CRL': 'X509 CRL',
+   '(RSA )?PRIVATE KEY': '(RSA )?PRIVATE KEY',
+   '(RSA )?PUBLIC KEY' : '(RSA )?PUBLIC KEY'
 })
 
 export function ensurePem(pem, type) {
    pem = ensureString(pem)
    type = ensurePemType(type)
    const test = pemRegex(type).test(pem);
-   if (test == false) return TypeError(`Expected PEM format RSA Key`)
+   if (test == false) throw TypeError(`Expected PEM format RSA Key`)
    return pem
 }
 
@@ -65,15 +67,15 @@ function pemRegex(pemType) {
 
 function ensurePemType(type) {
    const isTrue = Object.prototype.hasOwnProperty.call(pemTypes, type)
-   if (!isTrue) return TypeError(`Unexpected PEM type : ${type}`);
+   if (!isTrue) throw TypeError(`Unexpected PEM type : ${type}`);
    return type
 }
 
 export function ensureString(string) {
-   if (typeof string !== 'string') return TypeError(`Expected string but got ${typeof string}`);
+   if (typeof string !== 'string') throw TypeError(`Expected string but got ${typeof string}`);
    return string
 }
-/* 
+
 const RSAPrivateKeyPem = `-----BEGIN RSA PRIVATE KEY-----
 MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu
 KUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEm
@@ -170,5 +172,6 @@ console.assert(RSAPrivateKeyPem == ensuraRSAPrivateKeyPem(RSAPrivateKeyPem), { t
 console.assert(CertificatePem == ensureCertificate(CertificatePem), { type: 'Certificate', message: 'Expected PEM format' })
 console.assert(RSAPublicKeyPem == ensureRSAPublicKeyPem(RSAPublicKeyPem), { type: 'RSA Public Key', message: 'Expected PEM format' })
 console.assert(PrivateKeyPem == ensurePrivateKey(PrivateKeyPem), { type: 'Private Key', message: 'Expected PEM format' })
-console.assert(PublicKeyPem == ensurePrivateKey(PublicKeyPem), { type: 'Public Key', message: 'Expected PEM format' })
- */
+console.assert(PublicKeyPem == ensurePublicKey(PublicKeyPem), { type: 'Public Key', message: 'Expected PEM format' })
+console.assert(RSAPrivateKeyPem == ensurePem(RSAPrivateKeyPem, pemTypes["(RSA )?PRIVATE KEY"]), { type: 'all Private Key', message: 'Expected all types of Private Key'})
+console.assert(PrivateKeyPem == ensurePem(PrivateKeyPem, pemTypes["(RSA )?PRIVATE KEY"]), { type: 'all Private Key', message: 'Expected all types of Private Key'})
