@@ -69,7 +69,7 @@ function ensurePemType(type) {
    return type
 }
 
-function ensureString(string) {
+export function ensureString(string) {
    if (typeof string !== 'string') return TypeError(`Expected string but got ${typeof string}`);
    return string
 }
