@@ -54,7 +54,7 @@ function hkdfExpandLabel(algo, secret, label, context, length) {
 
 // keyschedule.js
 async function handshakeKey(sharedKey, hashAlgo) {
-  const IKM0 = new Uint8Array(hashLength);
+  const IKM0 = new Uint8Array(hashAlgo / 8);
   const salt0 = new Uint8Array(0);
   const earlySecret = await hkdfExtract(hashAlgo, salt0, IKM0);
   const emptyHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, salt0);

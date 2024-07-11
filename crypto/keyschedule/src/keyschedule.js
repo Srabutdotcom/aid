@@ -7,7 +7,7 @@ import { hkdfExpandLabel, hkdfExtract } from "./hkdf.js";
  * @param {uint} hashAlgo - 256, 384, or 512
  */
 export async function handshakeKey(sharedKey, hashAlgo) {
-   const IKM0 = new Uint8Array(hashLength)
+   const IKM0 = new Uint8Array(hashAlgo / 8)
    const salt0 = new Uint8Array(0);
    const earlySecret = await hkdfExtract(hashAlgo, salt0, IKM0)
    const emptyHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, salt0);
@@ -35,9 +35,9 @@ export async function derivedKey(clientHello, serverHello, handshakeKey, hashAlg
    } else {
       label = 's ' + label;
    }
-   const derivedSecret = hkdfExpandLabel(hashAlgo,handshakeKey,label,helloHash,hashAlgo/8);
-   const key = hkdfExpandLabel(hashAlgo,derivedSecret,'key', salt0, encryptLength);
-   const iv = hkdfExpandLabel(hashAlgo,derivedSecret, 'iv', salt0, 12);
+   const derivedSecret = hkdfExpandLabel(hashAlgo, handshakeKey, label, helloHash, hashAlgo / 8);
+   const key = hkdfExpandLabel(hashAlgo, derivedSecret, 'key', salt0, encryptLength);
+   const iv = hkdfExpandLabel(hashAlgo, derivedSecret, 'iv', salt0, 12);
 
    return {
       key,
