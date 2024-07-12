@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-var
 // aead.js
 var Aead = class {
   //*AESGCM

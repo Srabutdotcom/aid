@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-var
 // ../../../byte/concat.js
 function concat(...bs) {
   const l = bs.reduce((ac, ar) => ac + (ar?.length ?? 0), 0);
