@@ -35,9 +35,9 @@ export async function derivedKey(clientHello, serverHello, handshakeKey, hashAlg
    } else {
       label = 's ' + label;
    }
-   const derivedSecret = hkdfExpandLabel(hashAlgo, handshakeKey, label, helloHash, hashAlgo / 8);
-   const key = hkdfExpandLabel(hashAlgo, derivedSecret, 'key', salt0, encryptLength);
-   const iv = hkdfExpandLabel(hashAlgo, derivedSecret, 'iv', salt0, 12);
+   const derivedSecret = await hkdfExpandLabel(hashAlgo, handshakeKey, label, helloHash, hashAlgo / 8);
+   const key = await hkdfExpandLabel(hashAlgo, derivedSecret, 'key', salt0, encryptLength);
+   const iv = await hkdfExpandLabel(hashAlgo, derivedSecret, 'iv', salt0, 12);
 
    return {
       key,
