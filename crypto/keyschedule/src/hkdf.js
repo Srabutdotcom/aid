@@ -39,7 +39,7 @@ export async function hkdfExtract(algo, key, info) {
 }
 
 // Implement HKDF-Expand-Label in JavaScript
-export function hkdfExpandLabel(algo, secret, label, context, length) {
+export async function hkdfExpandLabel(algo, secret, label, context, length) {
    
    // Construct the HKDF label
    const hkdfLabel = new Uint8Array(2 + 1 + 6 + label.length + 1 + context.length);
@@ -59,5 +59,5 @@ export function hkdfExpandLabel(algo, secret, label, context, length) {
    hkdfLabel[offset++] = context.length;
    hkdfLabel.set(context, offset);
 
-   return hkdfExpand(algo, secret, hkdfLabel)
+   return await hkdfExpand(algo, secret, hkdfLabel, length)
 }

@@ -38,7 +38,7 @@ async function hkdfExtract(algo, key, info) {
   );
   return new Uint8Array(derivedKey2);
 }
-function hkdfExpandLabel(algo, secret, label, context, length) {
+async function hkdfExpandLabel(algo, secret, label, context, length) {
   const hkdfLabel = new Uint8Array(2 + 1 + 6 + label.length + 1 + context.length);
   let offset = 0;
   hkdfLabel[offset++] = length >> 8 & 255;
@@ -49,7 +49,7 @@ function hkdfExpandLabel(algo, secret, label, context, length) {
   offset += prefixLabel.length;
   hkdfLabel[offset++] = context.length;
   hkdfLabel.set(context, offset);
-  return hkdfExpand(algo, secret, hkdfLabel);
+  return await hkdfExpand(algo, secret, hkdfLabel, length);
 }
 
 // keyschedule.js
