@@ -64,7 +64,7 @@ async function handshakeKey(sharedKey, hashAlgo) {
 }
 async function derivedKey(clientHello, serverHello, handshakeKey2, hashAlgo, encryptLength, client) {
   const salt0 = new Uint8Array(0);
-  const helloHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, concat(clientHello, serverHello));
+  const helloHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, concat(clientHello, serverHello)));
   let label = "hs trafic";
   if (client == true || client == "c") {
     label = "c " + label;
