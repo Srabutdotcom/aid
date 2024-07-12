@@ -57,7 +57,7 @@ async function handshakeKey(sharedKey, hashAlgo) {
   const IKM0 = new Uint8Array(hashAlgo / 8);
   const salt0 = new Uint8Array(0);
   const earlySecret = await hkdfExtract(hashAlgo, salt0, IKM0);
-  const emptyHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, salt0);
+  const emptyHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, salt0));
   const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, "derived", emptyHash, hashAlgo / 8);
   const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
   return handshakeSecret;
