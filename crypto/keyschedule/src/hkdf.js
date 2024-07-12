@@ -6,7 +6,7 @@ const enc = new TextEncoder
 
 // LINK - https://en.wikipedia.org/wiki/HKDF#HKDF-Expand
 export async function hkdfExpand(algo, secret, info, length) {
-   
+
    let t = new Uint8Array(0);
    let okm = new Uint8Array(0);
    let i = 0;
@@ -14,9 +14,9 @@ export async function hkdfExpand(algo, secret, info, length) {
    while (okm.length < length) {
       i++;
       const counterBytes = new Uint8Array([i]);
-      
+
       const input = concat(t, info, counterBytes)// new Uint8Array([...t, ...info, ...counterBytes]);
-      
+
       t = await hkdfExtract(algo, secret, input)
 
       okm = concat(okm, t)//new Uint8Array([...okm, ...t]);
@@ -26,7 +26,7 @@ export async function hkdfExpand(algo, secret, info, length) {
 }
 
 export async function hkdfExtract(algo, key, info) {
-   if(key.length==0)key = new Uint8Array(algo/8)
+   if (key.length == 0) key = new Uint8Array(algo / 8)
    const baseKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-" + algo }, false, ["sign"])
    const derivedKey = await crypto.subtle.sign(
       {
@@ -40,7 +40,7 @@ export async function hkdfExtract(algo, key, info) {
 
 // Implement HKDF-Expand-Label in JavaScript
 export async function hkdfExpandLabel(algo, secret, label, context, length) {
-   
+
    // Construct the HKDF label
    const hkdfLabel = new Uint8Array(2 + 1 + 6 + label.length + 1 + context.length);
    let offset = 0;
