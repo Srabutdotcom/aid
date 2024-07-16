@@ -9,7 +9,8 @@ export const pemTypes = Object.freeze({
    'NEW CERTIFICATE REQUEST': 'NEW CERTIFICATE REQUEST',
    'CERTIFICATE REQUEST': 'CERTIFICATE REQUEST',
    'X509 CRL': 'X509 CRL',
-   '(RSA )?PRIVATE KEY': '(RSA )?PRIVATE KEY',
+   'EC PRIVATE KEY':'EC PRIVATE KEY',
+   '(RSA |EC )?PRIVATE KEY': '(RSA |EC )?PRIVATE KEY',
    '(RSA )?PUBLIC KEY' : '(RSA )?PUBLIC KEY'
 })
 
@@ -168,10 +169,17 @@ s85X5U5PAwJiVCsSyCFkNGwJmmuCPtrHipwZi5ax5jfrb71Plilj2VOXdrR2zU7F
 OQIDAQAB
 -----END PUBLIC KEY-----`
 
+const ecPrivateKey = `-----BEGIN EC PRIVATE KEY-----
+MHQCAQEEIFL3sLnioGcDvHWM/BPlNw96BOx1KKco2qsq4UwhQUosoAcGBSuBBAAK
+oUQDQgAEXs1Fmq4QdPAbn3NycdEU+HOjc3kW9efbso2kI/vdDTWcSCMk310s53G3
+tRClDBPPuuJAsKghbPfaTaUpmXFCNA==
+-----END EC PRIVATE KEY-----`
+
 console.assert(RSAPrivateKeyPem == ensuraRSAPrivateKeyPem(RSAPrivateKeyPem), { type: 'RSA Private Key', message: 'Expected PEM format' })
 console.assert(CertificatePem == ensureCertificate(CertificatePem), { type: 'Certificate', message: 'Expected PEM format' })
 console.assert(RSAPublicKeyPem == ensureRSAPublicKeyPem(RSAPublicKeyPem), { type: 'RSA Public Key', message: 'Expected PEM format' })
 console.assert(PrivateKeyPem == ensurePrivateKey(PrivateKeyPem), { type: 'Private Key', message: 'Expected PEM format' })
 console.assert(PublicKeyPem == ensurePublicKey(PublicKeyPem), { type: 'Public Key', message: 'Expected PEM format' })
-console.assert(RSAPrivateKeyPem == ensurePem(RSAPrivateKeyPem, pemTypes["(RSA )?PRIVATE KEY"]), { type: 'all Private Key', message: 'Expected all types of Private Key'})
-console.assert(PrivateKeyPem == ensurePem(PrivateKeyPem, pemTypes["(RSA )?PRIVATE KEY"]), { type: 'all Private Key', message: 'Expected all types of Private Key'})
+console.assert(RSAPrivateKeyPem == ensurePem(RSAPrivateKeyPem, pemTypes["(RSA |EC )?PRIVATE KEY"]), { type: 'all Private Key', message: 'Expected all types of Private Key'})
+console.assert(PrivateKeyPem == ensurePem(PrivateKeyPem, pemTypes["(RSA |EC )?PRIVATE KEY"]), { type: 'all Private Key', message: 'Expected all types of Private Key'})
+console.assert(ecPrivateKey == ensurePem(ecPrivateKey, pemTypes["(RSA |EC )?PRIVATE KEY"]), { type: 'all Private Key', message: 'Expected all types of Private Key'})
