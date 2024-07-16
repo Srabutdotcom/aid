@@ -17,7 +17,7 @@ export function ensurePem(pem, type) {
    pem = ensureString(pem)
    type = ensurePemType(type)
    const test = pemRegex(type).test(pem);
-   if (test == false) throw TypeError(`Expected PEM format RSA Key`)
+   if (test == false) throw TypeError(`Expected PEM format ${type}`)
    return pem
 }
 
