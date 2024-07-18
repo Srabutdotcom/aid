@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-var
 // ../../../byte/concat.js
 function concat(...bs) {
   const l = bs.reduce((ac, ar) => ac + (ar?.length ?? 0), 0);
@@ -67,7 +66,7 @@ async function derivedKey(clientHello, serverHello, handshakeKey2, hashAlgo, enc
   const salt0 = new Uint8Array(0);
   const helloHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, concat(clientHello, serverHello)));
   let label = "hs trafic";
-  if (client == true || client == "client") {
+  if (client == true || client == "c") {
     label = "c " + label;
   } else {
     label = "s " + label;
@@ -77,7 +76,8 @@ async function derivedKey(clientHello, serverHello, handshakeKey2, hashAlgo, enc
   const iv = await hkdfExpandLabel(hashAlgo, derivedSecret, "iv", salt0, 12);
   return {
     key,
-    iv, 
+    iv,
+    derivedSecret,
     hashAlgo
   };
 }

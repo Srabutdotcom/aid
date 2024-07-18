@@ -41,7 +41,9 @@ export async function derivedKey(clientHello, serverHello, handshakeKey, hashAlg
 
    return {
       key,
-      iv
+      iv,
+      derivedSecret,
+      hashAlgo
    }
 }
 
