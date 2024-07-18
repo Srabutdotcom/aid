@@ -1,6 +1,14 @@
 import { concat } from "../../../byte/concat.js";
 import { hkdfExpandLabel, hkdfExtract } from "./hkdf.js";
 
+const salt0 = new Uint8Array(0)
+
+const emptyHashs = Object.freeze({
+   256: new Uint8Array(await crypto.subtle.digest(`SHA-256`, salt0)),
+   384: new Uint8Array(await crypto.subtle.digest(`SHA-384`, salt0)),
+   512: new Uint8Array(await crypto.subtle.digest(`SHA-512`, salt0)),
+})
+
 /**
  * 
  * @param {Uint8Array} sharedKey - derived using x25519 using privateKey and publicKey 
@@ -8,10 +16,8 @@ import { hkdfExpandLabel, hkdfExtract } from "./hkdf.js";
  */
 export async function handshakeKey(sharedKey, hashAlgo) {
    const IKM0 = new Uint8Array(hashAlgo / 8)
-   const salt0 = new Uint8Array(0);
    const earlySecret = await hkdfExtract(hashAlgo, salt0, IKM0)
-   const emptyHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, salt0));
-   const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, 'derived', emptyHash, hashAlgo / 8)// in hkdfexpandlabel has include tls13
+   const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, 'derived', emptyHashs[hashAlgo], hashAlgo / 8)// in hkdfexpandlabel has include tls13
    const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
    return handshakeSecret
 }
@@ -27,7 +33,6 @@ export async function handshakeKey(sharedKey, hashAlgo) {
  * @returns 
  */
 export async function derivedKey(clientHello, serverHello, handshakeKey, hashAlgo, encryptLength, client) {
-   const salt0 = new Uint8Array(0);
    const helloHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, concat(clientHello, serverHello)))
    let label = 'hs trafic'
    if (client == true || client == 'c') {
@@ -45,6 +50,10 @@ export async function derivedKey(clientHello, serverHello, handshakeKey, hashAlg
       derivedSecret,
       hashAlgo
    }
+}
+
+export async function finishedKey(baseKey, hashAlgo){
+   return await hkdfExpandLabel(hashAlgo, baseKey, 'finished', emptyHashs[hashAlgo], hashAlgo / 8)
 }
 
 //`esbuild ./keyschedule.js --bundle --format=esm --target=esnext --outfile=../../dist/keyschedule.js`
