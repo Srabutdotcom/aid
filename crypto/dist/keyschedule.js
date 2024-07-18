@@ -77,7 +77,8 @@ async function derivedKey(clientHello, serverHello, handshakeKey2, hashAlgo, enc
   const iv = await hkdfExpandLabel(hashAlgo, derivedSecret, "iv", salt0, 12);
   return {
     key,
-    iv
+    iv, 
+    hashAlgo
   };
 }
 export {
