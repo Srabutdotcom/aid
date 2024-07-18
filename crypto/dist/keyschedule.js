@@ -53,17 +53,20 @@ async function hkdfExpandLabel(algo, secret, label, context, length) {
 }
 
 // keyschedule.js
+var salt0 = new Uint8Array(0);
+var emptyHashs = Object.freeze({
+  256: new Uint8Array(await crypto.subtle.digest(`SHA-256`, salt0)),
+  384: new Uint8Array(await crypto.subtle.digest(`SHA-384`, salt0)),
+  512: new Uint8Array(await crypto.subtle.digest(`SHA-512`, salt0))
+});
 async function handshakeKey(sharedKey, hashAlgo) {
   const IKM0 = new Uint8Array(hashAlgo / 8);
-  const salt0 = new Uint8Array(0);
   const earlySecret = await hkdfExtract(hashAlgo, salt0, IKM0);
-  const emptyHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, salt0));
-  const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, "derived", emptyHash, hashAlgo / 8);
+  const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, "derived", emptyHashs[hashAlgo], hashAlgo / 8);
   const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
   return handshakeSecret;
 }
 async function derivedKey(clientHello, serverHello, handshakeKey2, hashAlgo, encryptLength, client) {
-  const salt0 = new Uint8Array(0);
   const helloHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, concat(clientHello, serverHello)));
   let label = "hs trafic";
   if (client == true || client == "c") {
@@ -81,7 +84,11 @@ async function derivedKey(clientHello, serverHello, handshakeKey2, hashAlgo, enc
     hashAlgo
   };
 }
+async function finishedKey(baseKey, hashAlgo) {
+  return await hkdfExpandLabel(hashAlgo, baseKey, "finished", emptyHashs[hashAlgo], hashAlgo / 8);
+}
 export {
   derivedKey,
+  finishedKey,
   handshakeKey
 };
