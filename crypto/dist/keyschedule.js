@@ -87,8 +87,16 @@ async function derivedKey(clientHello, serverHello, handshakeKey2, hashAlgo, enc
 async function finishedKey(baseKey, hashAlgo) {
   return await hkdfExpandLabel(hashAlgo, baseKey, "finished", emptyHashs[hashAlgo], hashAlgo / 8);
 }
+async function verifyData(baseKey, hashAlgo, client, server, encryext, cert, certverfy) {
+  const finKey = await finishedKey(baseKey, hashAlgo);
+  const handshakeContx = concat(client, server, encryext, cert, certverfy);
+  const transHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, handshakeContx);
+  const vrfyData = await crypto.subtle.sign({ name: "HMAC" }, finKey, transHash);
+  return vrfyData;
+}
 export {
   derivedKey,
   finishedKey,
-  handshakeKey
+  handshakeKey,
+  verifyData
 };
