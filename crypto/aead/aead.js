@@ -6,7 +6,7 @@ export class Aead { //*AESGCM
     * @param {Uint8Array} recdata - record header
     * @param {uint} seq - sequential record
     */
-   constructor(key, ivInit, recdata, seq) {
+   constructor(key, ivInit, recdata, seq = 0) {
       this.seq = seq;
       this.key = key;
       this.iv = ivInit;
