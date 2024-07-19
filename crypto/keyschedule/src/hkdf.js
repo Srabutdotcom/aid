@@ -28,13 +28,7 @@ export async function hkdfExpand(algo, secret, info, length) {
 export async function hkdfExtract(algo, key, info) {
    if (key.length == 0) key = new Uint8Array(algo / 8)
    const baseKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-" + algo }, false, ["sign"])
-   const derivedKey = await crypto.subtle.sign(
-      {
-         name: "HMAC"
-      },
-      baseKey,
-      info
-   )
+   const derivedKey = await crypto.subtle.sign({ name: "HMAC" }, baseKey, info)
    return new Uint8Array(derivedKey)
 }
 

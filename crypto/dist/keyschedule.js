@@ -29,13 +29,7 @@ async function hkdfExtract(algo, key, info) {
   if (key.length == 0)
     key = new Uint8Array(algo / 8);
   const baseKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-" + algo }, false, ["sign"]);
-  const derivedKey2 = await crypto.subtle.sign(
-    {
-      name: "HMAC"
-    },
-    baseKey,
-    info
-  );
+  const derivedKey2 = await crypto.subtle.sign({ name: "HMAC" }, baseKey, info);
   return new Uint8Array(derivedKey2);
 }
 async function hkdfExpandLabel(algo, secret, label, context, length) {
@@ -91,7 +85,7 @@ async function verifyData(baseKey, hashAlgo, client, server, encryext, cert, cer
   const finKey = await finishedKey(baseKey, hashAlgo);
   const handshakeContx = concat(client, server, encryext, cert, certverfy);
   const transHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, handshakeContx);
-  const vrfyData = await crypto.subtle.sign({ name: "HMAC" }, finKey, transHash);
+  const vrfyData = await hkdfExtract(hashAlgo, finKey, transHash);
   return vrfyData;
 }
 export {

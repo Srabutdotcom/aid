@@ -60,7 +60,7 @@ export async function verifyData(baseKey, hashAlgo, client, server, encryext, ce
    const finKey = await finishedKey(baseKey, hashAlgo);
    const handshakeContx = concat(client,server,encryext,cert,certverfy);
    const transHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, handshakeContx);
-   const vrfyData = await crypto.subtle.sign({    name:'HMAC'   }, finKey, transHash)
+   const vrfyData = await hkdfExtract(hashAlgo,finKey, transHash)//await crypto.subtle.sign({    name:'HMAC'   }, finKey, transHash)
    return vrfyData
 }
 
