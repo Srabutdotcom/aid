@@ -32,7 +32,7 @@ export class Aead { //*AESGCM
    }
    async encrypt(uint8, ad) {
       await this.importKey();
-      this.buildIV()
+     
       this.algo = {
          name: "AES-GCM",
          iv: this.ivAdj,
@@ -41,6 +41,7 @@ export class Aead { //*AESGCM
       }
 
       const output = await self.crypto.subtle.encrypt(this.algo, this.cryptoKey, uint8);
+      this.buildIV()
       return new Uint8Array(output);
    }
 
