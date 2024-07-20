@@ -53,10 +53,13 @@ var emptyHashs = Object.freeze({
   384: new Uint8Array(await crypto.subtle.digest(`SHA-384`, salt0)),
   512: new Uint8Array(await crypto.subtle.digest(`SHA-512`, salt0))
 });
-async function handshakeKey(sharedKey, hashAlgo) {
+async function earlySecret(hashAlgo) {
   const IKM0 = new Uint8Array(hashAlgo / 8);
-  const earlySecret = await hkdfExtract(hashAlgo, salt0, IKM0);
-  const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, "derived", emptyHashs[hashAlgo], hashAlgo / 8);
+  return await hkdfExtract(hashAlgo, salt0, IKM0);
+}
+async function handshakeKey(sharedKey, hashAlgo) {
+  const earlySecret2 = await earlySecret2(hashAlgo);
+  const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret2, "derived", emptyHashs[hashAlgo], hashAlgo / 8);
   const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
   return handshakeSecret;
 }
@@ -90,6 +93,7 @@ async function verifyData(baseKey, hashAlgo, client, server, encryext, cert, cer
 }
 export {
   derivedKey,
+  earlySecret,
   finishedKey,
   handshakeKey,
   verifyData

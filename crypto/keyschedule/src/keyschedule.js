@@ -9,14 +9,18 @@ const emptyHashs = Object.freeze({
    512: new Uint8Array(await crypto.subtle.digest(`SHA-512`, salt0)),
 })
 
+export async function earlySecret(hashAlgo){
+   const IKM0 = new Uint8Array(hashAlgo / 8);
+   return await hkdfExtract(hashAlgo, salt0, IKM0)
+}
+
 /**
  * 
  * @param {Uint8Array} sharedKey - derived using x25519 using privateKey and publicKey 
  * @param {uint} hashAlgo - 256, 384, or 512
  */
 export async function handshakeKey(sharedKey, hashAlgo) {
-   const IKM0 = new Uint8Array(hashAlgo / 8)
-   const earlySecret = await hkdfExtract(hashAlgo, salt0, IKM0)
+   const earlySecret = await earlySecret(hashAlgo)
    const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, 'derived', emptyHashs[hashAlgo], hashAlgo / 8)// in hkdfexpandlabel has include tls13
    const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
    return handshakeSecret
