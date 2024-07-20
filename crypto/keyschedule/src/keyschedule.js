@@ -20,8 +20,8 @@ export async function earlySecret(hashAlgo){
  * @param {uint} hashAlgo - 256, 384, or 512
  */
 export async function handshakeKey(sharedKey, hashAlgo) {
-   const earlySecret = await earlySecret(hashAlgo)
-   const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret, 'derived', emptyHashs[hashAlgo], hashAlgo / 8)// in hkdfexpandlabel has include tls13
+   const early_secret = await earlySecret(hashAlgo)
+   const derivedSecret = await hkdfExpandLabel(hashAlgo, early_secret, 'derived', emptyHashs[hashAlgo], hashAlgo / 8)// in hkdfexpandlabel has include tls13
    const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
    return handshakeSecret
 }

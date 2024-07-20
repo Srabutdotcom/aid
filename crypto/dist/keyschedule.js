@@ -58,8 +58,8 @@ async function earlySecret(hashAlgo) {
   return await hkdfExtract(hashAlgo, salt0, IKM0);
 }
 async function handshakeKey(sharedKey, hashAlgo) {
-  const earlySecret2 = await earlySecret2(hashAlgo);
-  const derivedSecret = await hkdfExpandLabel(hashAlgo, earlySecret2, "derived", emptyHashs[hashAlgo], hashAlgo / 8);
+  const early_secret = await earlySecret(hashAlgo);
+  const derivedSecret = await hkdfExpandLabel(hashAlgo, early_secret, "derived", emptyHashs[hashAlgo], hashAlgo / 8);
   const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
   return handshakeSecret;
 }
