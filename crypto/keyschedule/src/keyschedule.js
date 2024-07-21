@@ -3,7 +3,7 @@ import { hkdfExpandLabel, hkdfExtract } from "./hkdf.js";
 
 const salt0 = new Uint8Array(0)
 
-const emptyHashs = Object.freeze({
+export const emptyHashs = Object.freeze({
    256: new Uint8Array(await crypto.subtle.digest(`SHA-256`, salt0)),
    384: new Uint8Array(await crypto.subtle.digest(`SHA-384`, salt0)),
    512: new Uint8Array(await crypto.subtle.digest(`SHA-512`, salt0)),
@@ -11,7 +11,7 @@ const emptyHashs = Object.freeze({
 
 export async function earlySecret(hashAlgo){
    const IKM0 = new Uint8Array(hashAlgo / 8);
-   return await hkdfExtract(hashAlgo, salt0, IKM0)
+   return await hkdfExtract(salt0, IKM0, hashAlgo)
 }
 
 /**
@@ -21,8 +21,8 @@ export async function earlySecret(hashAlgo){
  */
 export async function handshakeKey(sharedKey, hashAlgo) {
    const early_secret = await earlySecret(hashAlgo)
-   const derivedSecret = await hkdfExpandLabel(hashAlgo, early_secret, 'derived', emptyHashs[hashAlgo], hashAlgo / 8)// in hkdfexpandlabel has include tls13
-   const handshakeSecret = await hkdfExtract(hashAlgo, derivedSecret, sharedKey);
+   const derivedSecret = await hkdfExpandLabel(early_secret, 'derived', emptyHashs[hashAlgo], hashAlgo / 8, hashAlgo)// in hkdfexpandlabel has include tls13
+   const handshakeSecret = await hkdfExtract(derivedSecret, sharedKey, hashAlgo);
    return handshakeSecret
 }
 
@@ -38,15 +38,15 @@ export async function handshakeKey(sharedKey, hashAlgo) {
  */
 export async function derivedKey(clientHello, serverHello, handshakeKey, hashAlgo, encryptLength, client) {
    const helloHash = new Uint8Array(await crypto.subtle.digest(`SHA-${hashAlgo}`, concat(clientHello, serverHello)))
-   let label = 'hs trafic'
+   let label = 'hs traffic'
    if (client == true || client == 'c') {
       label = 'c ' + label;
    } else {
       label = 's ' + label;
    }
-   const derivedSecret = await hkdfExpandLabel(hashAlgo, handshakeKey, label, helloHash, hashAlgo / 8);
-   const key = await hkdfExpandLabel(hashAlgo, derivedSecret, 'key', salt0, encryptLength);
-   const iv = await hkdfExpandLabel(hashAlgo, derivedSecret, 'iv', salt0, 12);
+   const derivedSecret = await hkdfExpandLabel(handshakeKey, label, helloHash, hashAlgo / 8, hashAlgo);
+   const key = await hkdfExpandLabel(derivedSecret, 'key', salt0, encryptLength, hashAlgo);
+   const iv = await hkdfExpandLabel(derivedSecret, 'iv', salt0, 12, hashAlgo);
 
    return {
       key,
@@ -57,15 +57,14 @@ export async function derivedKey(clientHello, serverHello, handshakeKey, hashAlg
 }
 
 export async function finishedKey(baseKey, hashAlgo){
-   return await hkdfExpandLabel(hashAlgo, baseKey, 'finished', emptyHashs[hashAlgo], hashAlgo / 8)
+   return await hkdfExpandLabel(baseKey, 'finished', emptyHashs[hashAlgo], hashAlgo / 8, hashAlgo)
 }
 
-export async function verifyData(baseKey, hashAlgo, client, server, encryext, cert, certverfy){
+export async function verifyData(baseKey, client, server, encryext, cert, certverfy, hashAlgo){
    const finKey = await finishedKey(baseKey, hashAlgo);
    const handshakeContx = concat(client,server,encryext,cert,certverfy);
    const transHash = await crypto.subtle.digest(`SHA-${hashAlgo}`, handshakeContx);
-   const vrfyData = await hkdfExtract(hashAlgo,finKey, transHash)//await crypto.subtle.sign({    name:'HMAC'   }, finKey, transHash)
-   return vrfyData
+   return await hkdfExtract(finKey, new Uint8Array(transHash), hashAlgo)//await crypto.subtle.sign({    name:'HMAC'   }, finKey, transHash)
 }
 
 //`esbuild ./keyschedule.js --bundle --format=esm --target=esnext --outfile=../../dist/keyschedule.js`
