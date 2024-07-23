@@ -3761,7 +3761,7 @@ var Secret = class {
       this.serverMsg = serverHello.handshake;
     }
     const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split("_");
-    this.sharedSecret = x255193.sharedKey(serverPrivateKey, clientPublicKey);
+    this.sharedSecret = x255193.sharedKey(this.keys.privateKey, this.keys.publicKey);
     this.shaBit = +hash.match(/(.{3})$/g)[0];
     this.shaLength = this.shaBit / 8;
     this.emptyHash = emptyHashs[this.shaBit];

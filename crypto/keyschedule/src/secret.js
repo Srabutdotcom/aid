@@ -42,7 +42,7 @@ export class Secret {
          this.serverMsg = serverHello.handshake;
       }
       const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split('_');
-      this.sharedSecret = x25519.sharedKey(serverPrivateKey, clientPublicKey);
+      this.sharedSecret = x25519.sharedKey(this.keys.privateKey, this.keys.publicKey);
       this.shaBit = +hash.match(/(.{3})$/g)[0]
       this.shaLength = this.shaBit / 8;
       this.emptyHash = emptyHashs[this.shaBit];
