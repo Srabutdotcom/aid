@@ -29,13 +29,13 @@ export class Secret {
    constructor(clientHello, serverHello, client = false) {
       const clientSide = ((clientHello instanceof ClientHelloRecord) && client) ? true : false
       if (clientSide) {
-         if (serverHello instanceof Record == false) throw TypeError(`expected type Record for serverHello`)
+         if (serverHello.constructor.name!=='Record') throw TypeError(`expected type Record for serverHello`)
          this.keys.privateKey = (clientHello instanceof ClientHelloRecord) ? clientHello.keys.privateKey : clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
          this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
          this.clientMsg = (clientHello instanceof ClientHelloRecord) ? clientHello.handshake : clientHello.message;
          this.serverMsg = serverHello.message;
       } else {
-         if (clientHello instanceof Record == false) throw TypeError(`expected type Record for clientHello`)
+         if (clientHello.constructor.name!=='Record') throw TypeError(`expected type Record for clientHello`)
             this.keys.privateKey = (serverHello instanceof ServerHelloRecord) ? serverHello.keys.privateKey : serverHello.Handshake.ServerHello.extensions.key_share.data.key;
          this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
          this.clientMsg = clientHello.message;
