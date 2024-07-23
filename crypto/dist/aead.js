@@ -12,8 +12,6 @@ var Aead = class {
     this.seq = seq;
     this.key = key;
     this.iv = ivInit;
-    //this.ivAdj = this.iv;
-    //this.buildIV();
     this.algo = {
       name: "AES-GCM",
       iv: this.iv,
@@ -22,7 +20,6 @@ var Aead = class {
     };
   }
   buildIV() {
-    //this.ivAdj = new Uint8Array(this.iv.buffer);
     for (let i = 0; i < 8; i++) {
       this.iv[this.iv.length - 1 - i] ^= this.seq >> i * 8 & 255;
     }

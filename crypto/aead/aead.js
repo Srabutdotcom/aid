@@ -10,8 +10,6 @@ export class Aead { //*AESGCM
       this.seq = seq;
       this.key = key;
       this.iv = ivInit;
-      this.ivAdj // will be produced by seq
-      this.buildIV()
       this.algo = {
          name: "AES-GCM",
          iv: this.iv,
@@ -20,9 +18,8 @@ export class Aead { //*AESGCM
       }
    }
    buildIV() {
-      this.ivAdj = new Uint8Array(this.iv.buffer)
       for (let i = 0; i < 8; i++) {
-         this.ivAdj[this.gcm_ivlen - 1 - i] ^= ((this.seq >> (i * 8)) & 0xFF);
+         this.iv[this.iv.length - 1 - i] ^= ((this.seq >> (i * 8)) & 0xFF);
       }
       this.seq++;
    }
@@ -32,23 +29,19 @@ export class Aead { //*AESGCM
    }
    async encrypt(uint8, ad) {
       await this.importKey();
-     
       this.algo = {
          name: "AES-GCM",
-         iv: this.ivAdj,
+         iv: this.iv,
          additionalData: ad,
          //tagLength: 128 //*by default is 128
       }
-
       const output = await self.crypto.subtle.encrypt(this.algo, this.cryptoKey, uint8);
       this.buildIV()
       return new Uint8Array(output);
    }
-
    async decrypt(data) {
       await this.importKey();
       const output = await self.crypto.subtle.decrypt(this.algo, this.cryptoKey, data);
-      //debugger;
       return new Uint8Array(output);
    }
 }
