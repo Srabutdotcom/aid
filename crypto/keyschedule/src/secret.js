@@ -27,7 +27,7 @@ export class Secret {
    clientMsg
    serverMsg
    constructor(clientHello, serverHello, client = false) {
-      const clientSide = ((clientHello instanceof ClientHelloRecord) || client) ? true : false
+      const clientSide = ((clientHello instanceof ClientHelloRecord) && client) ? true : false
       if (clientSide) {
          if (serverHello instanceof Record == false) throw TypeError(`expected type Record for serverHello`)
          this.keys.privateKey = (clientHello instanceof ClientHelloRecord) ? clientHello.keys.privateKey : clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
