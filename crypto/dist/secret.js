@@ -3743,9 +3743,10 @@ var Secret = class {
   };
   clientMsg;
   serverMsg;
+  clientSide;
   constructor(clientHello, serverHello, client = false) {
-    const clientSide2 = clientHello instanceof ClientHelloRecord && client ? true : false;
-    if (clientSide2) {
+    this.clientSide = clientHello instanceof ClientHelloRecord && client ? true : false;
+    if (this.clientSide) {
       if (serverHello.constructor.name !== "Record")
         throw TypeError(`expected type Record for serverHello`);
       this.keys.privateKey = clientHello instanceof ClientHelloRecord ? clientHello.keys.privateKey : clientHello.Handshake.ClientHello.extensions.key_share.data.find((e) => e.name.includes("x25519")).key;
@@ -3821,7 +3822,7 @@ var Secret = class {
     let secret = await this.earlySecret();
     secret = await this.deriveSecret(secret, "derived", salt0);
     secret = await this.hkdfExtract(secret, this.sharedSecret);
-    const Label = clientSide ? "c hs traffic" : "s hs traffic";
+    const Label = this.clientSide ? "c hs traffic" : "s hs traffic";
     this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
     const key = await this.deriveSecret(this.secret, "key", salt0);
     const iv = await this.deriveSecret(this.secret, "iv", salt0, 12);
