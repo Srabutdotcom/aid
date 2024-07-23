@@ -19,9 +19,31 @@ export class Secret {
    secret
    shaBit // i.e. SHA-Bit --> SHA-256
    shaLength // will determine key length
-   constructor(shaBit) {
-      if ([256, 384, 512, '256', '384', '512'].includes(shaBit) == false) throw TypeError('hashAlgo must either 256, 384, or 512');
-      this.shaBit = shaBit;
+   sharedSecret
+   keys = {
+      privateKey: undefined,
+      publicKey: undefined
+   }
+   clientMsg
+   serverMsg
+   constructor(clientHello, serverHello, client = false) {
+      const clientSide = ((clientHello instanceof ClientHelloRecord) || client) ? true : false
+      if (clientSide) {
+         if (serverHello instanceof Record == false) throw TypeError(`expected type Record for serverHello`)
+         this.keys.privateKey = (clientHello instanceof ClientHelloRecord) ? clientHello.keys.privateKey : clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
+         this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
+         this.clientMsg = (clientHello instanceof ClientHelloRecord) ? clientHello.handshake : clientHello.message;
+         this.serverMsg = serverHello.message;
+      } else {
+         if (clientHello instanceof Record == false) throw TypeError(`expected type Record for clientHello`)
+            this.keys.privateKey = (serverHello instanceof ServerHelloRecord) ? serverHello.keys.privateKey : serverHello.Handshake.ServerHello.extensions.key_share.data.key;
+         this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
+         this.clientMsg = clientHello.message;
+         this.serverMsg = serverHello.handshake;
+      }
+      const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split('_');
+      this.sharedSecret = x25519.sharedKey(serverPrivateKey, clientPublicKey);
+      this.shaBit = +hash.match(/(.{3})$/g)[0]
       this.shaLength = this.shaBit / 8;
       this.emptyHash = emptyHashs[this.shaBit];
       this.IKM0 = new Uint8Array(this.shaLength);
@@ -69,33 +91,12 @@ export class Secret {
       const transcriptHash = new Uint8Array(await crypto.subtle.digest(`SHA-${this.shaBit}`, Messages));
       return await this.hkdfExpandLabel(secret, Label, transcriptHash, Length)
    }
-   async handshakeSecret(clientHello, serverHello) {
-      const keys = {
-         privateKey: undefined,
-         publicKey: undefined
-      }
-      let clientMsg = ''; 
-      let serverMsg = '';
-      const clientSide = (clientHello instanceof ClientHelloRecord) ? true : false
-      if (clientSide) {
-         if (serverHello instanceof Record == false) throw TypeError(`expected type Record for serverHello`)
-         keys.privateKey = clientHello.keys.privateKey;
-         keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
-         clientMsg = clientHello.handshake;
-         serverMsg = serverHello.message;
-      } else {
-         if (clientHello instanceof Record == false) throw TypeError(`expected type Record for clientHello`)
-         keys.privateKey = serverHello.keys.privateKey;
-         keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
-         clientMsg = clientHello.message;
-         serverMsg = serverHello.handshake;
-      }
+   async handshakeSecret() {
       let secret = await this.earlySecret();
       secret = await this.deriveSecret(secret, 'derived', salt0)
-      const sharedSecret = x25519.sharedKey(serverPrivateKey, clientPublicKey);
-      secret = await this.hkdfExtract(secret, sharedSecret);
+      secret = await this.hkdfExtract(secret, this.sharedSecret);
       const Label = clientSide ? 'c hs traffic' : 's hs traffic';
-      this.secret = await this.deriveSecret(secret, Label, concat(clientMsg, serverMsg));
+      this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
       const key = await this.deriveSecret(this.secret, 'key', salt0);
       const iv = await this.deriveSecret(this.secret, 'iv', salt0, 12);
       return {

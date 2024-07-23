@@ -3205,6 +3205,28 @@ function mergeUint8(...arrays) {
   }
   return result;
 }
+function getUint8BE2(data, pos = 0, length = 1) {
+  if (!(data instanceof Uint8Array)) {
+    throw new TypeError("Input data must be a byte array");
+  }
+  if (pos < 0 || pos >= data.length) {
+    throw new TypeError("Position is out of bounds");
+  }
+  if (length < 1) {
+    throw new TypeError("Length must be at least 1");
+  }
+  if (pos + length > data.length) {
+    throw TypeError(`length is beyond data.length`);
+  }
+  let output = 0;
+  for (let i = pos; i < pos + length; i++) {
+    output = output << 8 | data[i];
+  }
+  return output;
+}
+function getUint162(data, pos) {
+  return getUint8BE2(data, pos, 2);
+}
 var Struct = class extends Uint8Array {
   #struct;
   constructor(...array) {
@@ -3446,6 +3468,28 @@ var ClientHello2 = class extends Struct {
     );
   }
 };
+var ServerHello2 = class extends Struct {
+  type = HandshakeType.server_hello;
+  constructor(sessionId2, cipherSuites, keyShareEntry2) {
+    const random = new Random();
+    const session_id = new VariableVector(sessionId2, 0, 32);
+    const compression2 = new Uint8(0);
+    const cipherSuite = new Uint16(cipherSuites.find((e) => ciphers.map((f) => getUint162(f) == e)));
+    const extensions = [
+      new Extension(ExtensionType.supported_versions, new SupportedVersions()),
+      new Extension(ExtensionType.key_share, new KeyShareServerHello(keyShareEntry2))
+    ];
+    const ExtensionVector = new VariableVector(mergeUint8(...extensions), 8, 2 ** 16 - 1);
+    super(
+      protocolVersion,
+      random,
+      session_id,
+      cipherSuite,
+      compression2,
+      ExtensionVector
+    );
+  }
+};
 var ServerName = class extends Struct {
   constructor(hostname) {
     const hostnameUint8 = typeof hostname == "string" ? enc.encode(hostname) : hostname;
@@ -3477,6 +3521,12 @@ var KeyShareClientHello = class extends Struct {
   constructor(clientShares) {
     const KeyShareEntry2 = new VariableVector(clientShares, 0, 2 ** 16 - 1);
     super(KeyShareEntry2);
+  }
+};
+var KeyShareServerHello = class extends Struct {
+  constructor(server_share) {
+    const keyShareEntry2 = server_share;
+    super(keyShareEntry2);
   }
 };
 var PskKeyExchangeMode = class {
@@ -3685,6 +3735,15 @@ var ClientHelloRecord = class {
   }
 };
 var x255192 = __toESM2(require_x255192());
+var ServerHelloRecord = class {
+  constructor(sessionId2, cipherSuite) {
+    this.keys = x255192.generateKeyPair();
+    this.keyShareEntry = new KeyShareEntry(NamedGroup.x25519, this.keys.publicKey);
+    this.serverHello = new ServerHello2(sessionId2, cipherSuite, this.keyShareEntry);
+    this.handshake = new Handshake2(this.serverHello);
+    this.record = new TLSPlaintext(this.handshake);
+  }
+};
 
 // secret.js
 var enc2 = new TextEncoder();
@@ -3702,10 +3761,33 @@ var Secret = class {
   // i.e. SHA-Bit --> SHA-256
   shaLength;
   // will determine key length
-  constructor(shaBit) {
-    if ([256, 384, 512, "256", "384", "512"].includes(shaBit) == false)
-      throw TypeError("hashAlgo must either 256, 384, or 512");
-    this.shaBit = shaBit;
+  sharedSecret;
+  keys = {
+    privateKey: void 0,
+    publicKey: void 0
+  };
+  clientMsg;
+  serverMsg;
+  constructor(clientHello, serverHello, client = false) {
+    const clientSide2 = clientHello instanceof ClientHelloRecord || client ? true : false;
+    if (clientSide2) {
+      if (serverHello instanceof Record == false)
+        throw TypeError(`expected type Record for serverHello`);
+      this.keys.privateKey = clientHello instanceof ClientHelloRecord ? clientHello.keys.privateKey : clientHello.Handshake.ClientHello.extensions.key_share.data.find((e) => e.name.includes("x25519")).key;
+      this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
+      this.clientMsg = clientHello instanceof ClientHelloRecord ? clientHello.handshake : clientHello.message;
+      this.serverMsg = serverHello.message;
+    } else {
+      if (clientHello instanceof Record == false)
+        throw TypeError(`expected type Record for clientHello`);
+      this.keys.privateKey = serverHello instanceof ServerHelloRecord ? serverHello.keys.privateKey : serverHello.Handshake.ServerHello.extensions.key_share.data.key;
+      this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find((e) => e.name.includes("x25519")).key;
+      this.clientMsg = clientHello.message;
+      this.serverMsg = serverHello.handshake;
+    }
+    const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split("_");
+    this.sharedSecret = x255193.sharedKey(serverPrivateKey, clientPublicKey);
+    this.shaBit = +hash.match(/(.{3})$/g)[0];
     this.shaLength = this.shaBit / 8;
     this.emptyHash = emptyHashs[this.shaBit];
     this.IKM0 = new Uint8Array(this.shaLength);
@@ -3760,35 +3842,12 @@ var Secret = class {
     const transcriptHash = new Uint8Array(await crypto.subtle.digest(`SHA-${this.shaBit}`, Messages));
     return await this.hkdfExpandLabel(secret, Label, transcriptHash, Length);
   }
-  async handshakeSecret(clientHello, serverHello) {
-    const keys = {
-      privateKey: void 0,
-      publicKey: void 0
-    };
-    let clientMsg = "";
-    let serverMsg = "";
-    const clientSide = clientHello instanceof ClientHelloRecord ? true : false;
-    if (clientSide) {
-      if (serverHello instanceof Record == false)
-        throw TypeError(`expected type Record for serverHello`);
-      keys.privateKey = clientHello.keys.privateKey;
-      keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
-      clientMsg = clientHello.handshake;
-      serverMsg = serverHello.message;
-    } else {
-      if (clientHello instanceof Record == false)
-        throw TypeError(`expected type Record for clientHello`);
-      keys.privateKey = serverHello.keys.privateKey;
-      keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find((e) => e.name.includes("x25519")).key;
-      clientMsg = clientHello.message;
-      serverMsg = serverHello.handshake;
-    }
+  async handshakeSecret() {
     let secret = await this.earlySecret();
     secret = await this.deriveSecret(secret, "derived", salt0);
-    const sharedSecret = x255193.sharedKey(serverPrivateKey, clientPublicKey);
-    secret = await this.hkdfExtract(secret, sharedSecret);
+    secret = await this.hkdfExtract(secret, this.sharedSecret);
     const Label = clientSide ? "c hs traffic" : "s hs traffic";
-    this.secret = await this.deriveSecret(secret, Label, concat(clientMsg, serverMsg));
+    this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
     const key = await this.deriveSecret(this.secret, "key", salt0);
     const iv = await this.deriveSecret(this.secret, "iv", salt0, 12);
     return {
