@@ -94,10 +94,13 @@ const certificateVerify = hexArrayStrtoBytes(` 0f 00 00 84 08 04 00 80 5a 74 7c
          be 8d 48 59 ee 51 1f 60 29 57 b1 54 11 ac 02 76 71 45 9e 46 44
          5c 9e a5 8c 18 1e 81 8e 95 b8 c3 fb 0b f3 27 84 09 d3 be 15 2a
          3d a5 04 3e 06 3d da 65 cd f5 ae a2 0d 53 df ac d4 2f 74 f3`)
+const certificateVerifyHandshake = Handshake(certificateVerify)
 
 const finished = hexArrayStrtoBytes(`14 00 00 20 9b 9b 14 1d 90 63 37 fb d2 cb
          dc e7 1d f4 de da 4a b4 2c 30 95 72 cb 7f ff ee 54 54 b7 8f 07
          18`)
+const finishedHandshake = Handshake(finished);
+debugger;
 
 const payload = concat(encryptedExtensions, certificate, certificateVerify, finished);
 encryptedExtensions.type = ContentType.Application

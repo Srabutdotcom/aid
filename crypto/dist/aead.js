@@ -12,8 +12,8 @@ var Aead = class {
     this.seq = seq;
     this.key = key;
     this.iv = ivInit;
-    this.ivAdj;
-    this.buildIV();
+    //this.ivAdj = this.iv;
+    //this.buildIV();
     this.algo = {
       name: "AES-GCM",
       iv: this.iv,
@@ -22,9 +22,9 @@ var Aead = class {
     };
   }
   buildIV() {
-    this.ivAdj = new Uint8Array(this.iv.buffer);
+    //this.ivAdj = new Uint8Array(this.iv.buffer);
     for (let i = 0; i < 8; i++) {
-      this.ivAdj[this.gcm_ivlen - 1 - i] ^= this.seq >> i * 8 & 255;
+      this.iv[this.iv.length - 1 - i] ^= this.seq >> i * 8 & 255;
     }
     this.seq++;
   }
@@ -37,7 +37,7 @@ var Aead = class {
     await this.importKey();
     this.algo = {
       name: "AES-GCM",
-      iv: this.ivAdj,
+      iv: this.iv,
       additionalData: ad
       //tagLength: 128 //*by default is 128
     };
