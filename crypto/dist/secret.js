@@ -3736,6 +3736,7 @@ var Secret = class {
   // i.e. SHA-Bit --> SHA-256
   shaLength;
   // will determine key length
+  keyLength;
   sharedSecret;
   keys = {
     privateKey: void 0,
@@ -3765,6 +3766,7 @@ var Secret = class {
     this.sharedSecret = x255193.sharedKey(this.keys.privateKey, this.keys.publicKey);
     this.shaBit = +hash.match(/(.{3})$/g)[0];
     this.shaLength = this.shaBit / 8;
+    this.keyLength = encryptAlgo / 8;
     this.emptyHash = emptyHashs[this.shaBit];
     this.IKM0 = new Uint8Array(this.shaLength);
   }
@@ -3824,7 +3826,7 @@ var Secret = class {
     secret = await this.hkdfExtract(secret, this.sharedSecret);
     const Label = this.clientSide ? "c hs traffic" : "s hs traffic";
     this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
-    const key = await this.deriveSecret(this.secret, "key", salt0);
+    const key = await this.deriveSecret(this.secret, "key", salt0, this.keyLength);
     const iv = await this.deriveSecret(this.secret, "iv", salt0, 12);
     return {
       key,
