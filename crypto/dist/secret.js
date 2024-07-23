@@ -3780,7 +3780,7 @@ var Secret = class {
     const derivedKey = await crypto.subtle.sign({ name: "HMAC" }, baseKey, info);
     return new Uint8Array(derivedKey);
   }
-  HkdfLabel(Label, Context) {
+  HkdfLabel(Label, Context, Length) {
     if (typeof Label !== "string")
       throw TypeError("Expected string for Label");
     if (Context instanceof Uint8Array !== true)
@@ -3788,7 +3788,7 @@ var Secret = class {
     const label = `tls13 ${Label}`;
     const encodedLabel = enc2.encode(label);
     return concat(
-      Uint16BE(this.shaLength),
+      Uint16BE(Length),
       // Hash.length 
       new Uint8Array([encodedLabel.length]),
       // label length
@@ -3814,7 +3814,7 @@ var Secret = class {
     return okm.slice(0, length);
   }
   async hkdfExpandLabel(secret, Label, Context, Length = this.shaLength) {
-    return await this.hkdfExpand(secret, this.HkdfLabel(Label, Context), Length);
+    return await this.hkdfExpand(secret, this.HkdfLabel(Label, Context, Length), Length);
   }
   async deriveSecret(secret, Label, Messages, Length = this.shaLength) {
     const transcriptHash = new Uint8Array(await crypto.subtle.digest(`SHA-${this.shaBit}`, Messages));
