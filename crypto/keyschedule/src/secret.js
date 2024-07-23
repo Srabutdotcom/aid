@@ -100,8 +100,8 @@ export class Secret {
       secret = await this.hkdfExtract(secret, this.sharedSecret);
       const Label = this.clientSide ? 'c hs traffic' : 's hs traffic';
       this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
-      const key = await this.deriveSecret(this.secret, 'key', salt0, this.keyLength);
-      const iv = await this.deriveSecret(this.secret, 'iv', salt0, 12);
+      const key = await this.hkdfExpandLabel(this.secret, 'key', salt0, this.keyLength);
+      const iv = await this.hkdfExpandLabel(this.secret, 'iv', salt0, 12);
       return {
          key,
          iv
