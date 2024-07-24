@@ -173,7 +173,7 @@ function parseCipher(serverHello) {
    }
    if (check(serverHello).isInstanceOf(ServerHelloRecord)) {
       const handshake = Handshake(serverHello.handshake);
-      const [tls, aes, encryptAlgo, gcm, hash] = handshake;
+      const [tls, aes, encryptAlgo, gcm, hash] = handshake.ServerHello.cipher_suite;
       return {
          encryptAlgo, hash
       }
