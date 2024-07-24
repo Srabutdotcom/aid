@@ -2,7 +2,7 @@
 import * as x25519 from "@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
-import { Record } from '../../tools/tls13parser.js';
+import { Record, Handshake } from '../../tools/tls13parser.js';
 import { ClientHelloRecord, ServerHelloRecord } from '../../tools/tls13def.js'
 
 const enc = new TextEncoder
@@ -33,19 +33,19 @@ export class Secret {
    constructor(clientHello, serverHello, client = false) {
       this.clientSide = (check(clientHello).isInstanceOf(ClientHelloRecord) || client) ? true : false
       if (this.clientSide) {
-         if (check(serverHello).isInstanceOf(Record)==false) throw TypeError(`expected type Record for serverHello`)
+         if (check(serverHello).isInstanceOf(Record) == false) throw TypeError(`expected type Record for serverHello`)
          this.keys.privateKey = clientHello.keys.privateKey ?? clientHello.keys.secretKey;
          this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
          this.clientMsg = check(clientHello).isInstanceOf(ClientHelloRecord) ? clientHello.handshake : clientHello.message;
          this.serverMsg = serverHello.message;
       } else {
-         if (check(clientHello).isInstanceOf(Record)==false) throw TypeError(`expected type Record for clientHello`)
+         if (check(clientHello).isInstanceOf(Record) == false) throw TypeError(`expected type Record for clientHello`)
          this.keys.privateKey = serverHello.keys.privateKey ?? serverHello.keys.secretKey;
          this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
          this.clientMsg = clientHello.message;
          this.serverMsg = check(serverHello).isInstanceOf(ServerHelloRecord) ? serverHello.handshake : serverHello.message;
       }
-      const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split('_');
+      const { encryptAlgo, hash } = parseCipher(serverHello);
       this.sharedSecret = x25519.sharedKey(this.keys.privateKey, this.keys.publicKey);
       this.shaBit = +hash.match(/(.{3})$/g)[0]
       this.shaLength = this.shaBit / 8;
@@ -156,10 +156,26 @@ class Aead { //*AESGCM
    }
 }
 
-function check(obj){
+function check(obj) {
    return {
-      isInstanceOf(cls){
+      isInstanceOf(cls) {
          return obj instanceof cls || obj?.constructor.name == cls.name
+      }
+   }
+}
+
+function parseCipher(serverHello) {
+   if (check(serverHello).isInstanceOf(Record)) {
+      const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split('_');
+      return {
+         encryptAlgo, hash
+      }
+   }
+   if (check(serverHello).isInstanceOf(ServerHelloRecord)) {
+      const handshake = Handshake(serverHello.handshake);
+      const [tls, aes, encryptAlgo, gcm, hash] = handshake;
+      return {
+         encryptAlgo, hash
       }
    }
 }

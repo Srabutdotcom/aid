@@ -3488,6 +3488,11 @@ var ServerHello2 = class extends Struct {
       compression2,
       ExtensionVector
     );
+    this.random = random;
+    this.session_id = session_id;
+    this.compression = compression2;
+    this.cipherSuite = cipherSuite;
+    this.extensions = extensions;
   }
 };
 var ServerName = class extends Struct {
@@ -3788,7 +3793,7 @@ var Secret = class {
       this.clientMsg = clientHello.message;
       this.serverMsg = check(serverHello).isInstanceOf(ServerHelloRecord) ? serverHello.handshake : serverHello.message;
     }
-    const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split("_");
+    const { encryptAlgo, hash } = parseCipher(serverHello);
     this.sharedSecret = x255193.sharedKey(this.keys.privateKey, this.keys.publicKey);
     this.shaBit = +hash.match(/(.{3})$/g)[0];
     this.shaLength = this.shaBit / 8;
@@ -3912,6 +3917,23 @@ function check(obj) {
       return obj instanceof cls || obj?.constructor.name == cls.name;
     }
   };
+}
+function parseCipher(serverHello) {
+  if (check(serverHello).isInstanceOf(Record)) {
+    const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split("_");
+    return {
+      encryptAlgo,
+      hash
+    };
+  }
+  if (check(serverHello).isInstanceOf(ServerHelloRecord)) {
+    const handshake = Handshake(serverHello.handshake);
+    const [tls, aes, encryptAlgo, gcm, hash] = handshake;
+    return {
+      encryptAlgo,
+      hash
+    };
+  }
 }
 export {
   Secret,
