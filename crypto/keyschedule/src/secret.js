@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars
 import * as x25519 from "@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
