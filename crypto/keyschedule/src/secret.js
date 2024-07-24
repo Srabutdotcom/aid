@@ -30,19 +30,19 @@ export class Secret {
    clientSide
    aead
    constructor(clientHello, serverHello, client = false) {
-      this.clientSide = ((clientHello instanceof ClientHelloRecord) && client) ? true : false
+      this.clientSide = (check(clientHello).isInstanceOf(ClientHelloRecord) || client) ? true : false
       if (this.clientSide) {
-         if (serverHello.constructor.name !== 'Record') throw TypeError(`expected type Record for serverHello`)
+         if (check(serverHello).isInstanceOf(Record)==false) throw TypeError(`expected type Record for serverHello`)
          this.keys.privateKey = clientHello.keys.privateKey ?? clientHello.keys.secretKey;
          this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
-         this.clientMsg = (clientHello instanceof ClientHelloRecord) ? clientHello.handshake : clientHello.message;
+         this.clientMsg = check(clientHello).isInstanceOf(ClientHelloRecord) ? clientHello.handshake : clientHello.message;
          this.serverMsg = serverHello.message;
       } else {
-         if (clientHello.constructor.name !== 'Record') throw TypeError(`expected type Record for clientHello`)
+         if (check(clientHello).isInstanceOf(Record)==false) throw TypeError(`expected type Record for clientHello`)
          this.keys.privateKey = serverHello.keys.privateKey ?? serverHello.keys.secretKey;
          this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
          this.clientMsg = clientHello.message;
-         this.serverMsg = (serverHello instanceof ServerHelloRecord) ? serverHello.handshake : serverHello.message;
+         this.serverMsg = check(serverHello).isInstanceOf(ClientHelloRecord) ? serverHello.handshake : serverHello.message;
       }
       const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split('_');
       this.sharedSecret = x25519.sharedKey(this.keys.privateKey, this.keys.publicKey);
@@ -152,6 +152,14 @@ class Aead { //*AESGCM
       await this.importKey();
       const output = await self.crypto.subtle.decrypt(this.algo, this.cryptoKey, data);
       return new Uint8Array(output);
+   }
+}
+
+function check(obj){
+   return {
+      isInstanceOf(cls){
+         return obj instanceof cls || obj?.constructor.name == cls.name
+      }
    }
 }
 
