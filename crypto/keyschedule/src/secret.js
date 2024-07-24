@@ -42,7 +42,7 @@ export class Secret {
          this.keys.privateKey = serverHello.keys.privateKey ?? serverHello.keys.secretKey;
          this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
          this.clientMsg = clientHello.message;
-         this.serverMsg = check(serverHello).isInstanceOf(ClientHelloRecord) ? serverHello.handshake : serverHello.message;
+         this.serverMsg = check(serverHello).isInstanceOf(ServerHelloRecord) ? serverHello.handshake : serverHello.message;
       }
       const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split('_');
       this.sharedSecret = x25519.sharedKey(this.keys.privateKey, this.keys.publicKey);
