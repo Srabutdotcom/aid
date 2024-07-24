@@ -3908,7 +3908,7 @@ var Secret = class {
     const finished_key = await this.hkdfExpandLabel(this.secret, "finished", salt0);
     this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
     const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
-    const verify_data = await this.hkdfExtract(finished_key, transcriptHash);
+    const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
     this.finishedMsg = new Handshake2(
       concat(
         new Uint8Array([this.shaLength]),
