@@ -168,14 +168,14 @@ function parseCipher(serverHello) {
    if (check(serverHello).isInstanceOf(Record)) {
       const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split('_');
       return {
-         encryptAlgo, hash
+         encryptAlgo, hashAlgo:+hash.match(/(.{3})$/g)[0]
       }
    }
    if (check(serverHello).isInstanceOf(ServerHelloRecord)) {
       const handshake = Handshake(serverHello.handshake);
       const [tls, aes, encryptAlgo, gcm, hash] = handshake.ServerHello.cipher_suite.split('_');
       return {
-         encryptAlgo, hash
+         encryptAlgo, hashAlgo:+hash.match(/(.{3})$/g)[0]
       }
    }
 }
