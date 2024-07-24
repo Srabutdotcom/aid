@@ -3895,7 +3895,7 @@ var Secret = class {
     const sign = await crypto.subtle.sign(
       {
         name: privateKey.algorithm.name,
-        saltLength: hashAlgo / 8
+        saltLength: this.shaLength
       },
       privateKey,
       data2Sign
