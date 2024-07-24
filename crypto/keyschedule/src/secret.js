@@ -3,7 +3,7 @@ import * as x25519 from "@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
-import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, SignatureScheme } from '../../tools/tls13def.js'
+import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, SignatureScheme, Finished } from '../../tools/tls13def.js'
 
 const enc = new TextEncoder
 const salt0 = new Uint8Array(0)
@@ -140,10 +140,7 @@ export class Secret {
       const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
       const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
       this.finishedMsg = new HandshakeDef(
-         concat(
-            new Uint8Array([this.shaLength]),
-            verify_data
-         )
+         new Finished(verify_data)
       );
       return this.finishedMsg
    }

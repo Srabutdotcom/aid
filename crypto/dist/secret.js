@@ -3735,6 +3735,12 @@ var CertificateVerify2 = class extends Struct {
     );
   }
 };
+var Finished2 = class extends Struct {
+  type = HandshakeType.finished;
+  constructor(verifyData) {
+    super(verifyData);
+  }
+};
 var KeyUpdateRequest = class {
   static update_not_requested = new Uint8(0);
   static update_requested = new Uint8(1);
@@ -3910,10 +3916,7 @@ var Secret = class {
     const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
     const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
     this.finishedMsg = new Handshake2(
-      concat(
-        new Uint8Array([this.shaLength]),
-        verify_data
-      )
+      new Finished2(verify_data)
     );
     return this.finishedMsg;
   }
