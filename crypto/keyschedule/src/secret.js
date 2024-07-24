@@ -3,7 +3,7 @@ import * as x25519 from "@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
-import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify } from '../../tools/tls13def.js'
+import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, SignatureScheme } from '../../tools/tls13def.js'
 
 const enc = new TextEncoder
 const salt0 = new Uint8Array(0)
