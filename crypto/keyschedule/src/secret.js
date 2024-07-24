@@ -4,6 +4,7 @@ import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
 import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, SignatureScheme, Finished } from '../../tools/tls13def.js'
+import { TLSCiphertext } from "../../tools/tls13def.js";
 
 const enc = new TextEncoder
 const salt0 = new Uint8Array(0)
@@ -33,7 +34,7 @@ export class Secret {
    certificateVerifyMsg // handshake
    finishedMsg // handshake
    clientSide
-   aead
+   aead // Aead class
    constructor(clientHello, serverHello, client = false) {
       this.clientSide = (check(clientHello).isInstanceOf(ClientHelloRecord) || client) ? true : false
       if (this.clientSide) {
@@ -143,6 +144,12 @@ export class Secret {
          new Finished(verify_data)
       );
       return this.finishedMsg
+   }
+   async encrypt(){
+      const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg);
+      const header = concat(new Uint8Array([23,3,3],Uint16BE(handshakeMsg.length)));
+      const encrypted = await this.aead.encrypt(handshakeMsg, header);
+      return new TLSCiphertext(encrypted);
    }
 }
 

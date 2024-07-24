@@ -3672,6 +3672,20 @@ var TLSPlaintext = class extends Struct {
     );
   }
 };
+var TLSCiphertext = class extends Struct {
+  constructor(encryptedRecord) {
+    const length = new Uint16(encryptedRecord.length);
+    super(
+      ContentType.Application,
+      /* 23 */
+      protocolVersion,
+      /* TLS v1.2 */
+      length,
+      //*uint16
+      encryptedRecord
+    );
+  }
+};
 var HandshakeType = class {
   static hello_request_RESERVED = new Uint8(0);
   static client_hello = new Uint8(1);
@@ -3803,6 +3817,7 @@ var Secret = class {
   // handshake
   clientSide;
   aead;
+  // Aead class
   constructor(clientHello, serverHello, client = false) {
     this.clientSide = check(clientHello).isInstanceOf(ClientHelloRecord) || client ? true : false;
     if (this.clientSide) {
@@ -3919,6 +3934,12 @@ var Secret = class {
       new Finished2(verify_data)
     );
     return this.finishedMsg;
+  }
+  async encrypt() {
+    const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg);
+    const header = concat(new Uint8Array([23, 3, 3], Uint16BE(handshakeMsg.length)));
+    const encrypted = await this.aead.encrypt(handshakeMsg, header);
+    return new TLSCiphertext(encrypted);
   }
 };
 var Aead = class {
