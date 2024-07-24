@@ -1917,6 +1917,31 @@ var types = Object.freeze({
   2: "response"
   /*255:max value*/
 });
+var Record = class {
+  // TLSPlainText
+  #value;
+  constructor(value, pos) {
+    this.#value = ensureUint8View(value, pos);
+    this.pos = this.#value.pos;
+    const typeCode = this.#value.uint8();
+    this.type = records[typeCode]?.name;
+    if (!this.type)
+      throw TypeError(`Unexpected type of record value ${typeCode}`);
+    this.version = this.#value.uint16();
+    this.version = `${uinToHex(this.version, 4)}-TLS 1.x (legacy record version)`;
+    this.length = this.#value.uint16();
+    this[this.type] = records[typeCode](this.value, this.length);
+  }
+  get value() {
+    return this.#value;
+  }
+  get header() {
+    return Uint8Array.from(this.value).slice(this.pos, this.pos + 5);
+  }
+  get message() {
+    return Uint8Array.from(this.value).slice(this.pos + 5, this.pos + 5 + this.length);
+  }
+};
 function Invalid(value, length) {
   return `Invalid`;
 }
@@ -3180,28 +3205,6 @@ function mergeUint8(...arrays) {
   }
   return result;
 }
-function getUint8BE2(data, pos = 0, length = 1) {
-  if (!(data instanceof Uint8Array)) {
-    throw new TypeError("Input data must be a byte array");
-  }
-  if (pos < 0 || pos >= data.length) {
-    throw new TypeError("Position is out of bounds");
-  }
-  if (length < 1) {
-    throw new TypeError("Length must be at least 1");
-  }
-  if (pos + length > data.length) {
-    throw TypeError(`length is beyond data.length`);
-  }
-  let output = 0;
-  for (let i = pos; i < pos + length; i++) {
-    output = output << 8 | data[i];
-  }
-  return output;
-}
-function getUint162(data, pos) {
-  return getUint8BE2(data, pos, 2);
-}
 var Struct = class extends Uint8Array {
   #struct;
   constructor(...array) {
@@ -3443,28 +3446,6 @@ var ClientHello2 = class extends Struct {
     );
   }
 };
-var ServerHello2 = class extends Struct {
-  type = HandshakeType.server_hello;
-  constructor(sessionId2, cipherSuites, keyShareEntry2) {
-    const random = new Random();
-    const session_id = new VariableVector(sessionId2, 0, 32);
-    const compression2 = new Uint8(0);
-    const cipherSuite = new Uint16(cipherSuites.find((e) => ciphers.map((f) => getUint162(f) == e)));
-    const extensions = [
-      new Extension(ExtensionType.supported_versions, new SupportedVersions()),
-      new Extension(ExtensionType.key_share, new KeyShareServerHello(keyShareEntry2))
-    ];
-    const ExtensionVector = new VariableVector(mergeUint8(...extensions), 8, 2 ** 16 - 1);
-    super(
-      protocolVersion,
-      random,
-      session_id,
-      cipherSuite,
-      compression2,
-      ExtensionVector
-    );
-  }
-};
 var ServerName = class extends Struct {
   constructor(hostname) {
     const hostnameUint8 = typeof hostname == "string" ? enc.encode(hostname) : hostname;
@@ -3496,12 +3477,6 @@ var KeyShareClientHello = class extends Struct {
   constructor(clientShares) {
     const KeyShareEntry2 = new VariableVector(clientShares, 0, 2 ** 16 - 1);
     super(KeyShareEntry2);
-  }
-};
-var KeyShareServerHello = class extends Struct {
-  constructor(server_share) {
-    const keyShareEntry2 = server_share;
-    super(keyShareEntry2);
   }
 };
 var PskKeyExchangeMode = class {
@@ -3710,15 +3685,6 @@ var ClientHelloRecord = class {
   }
 };
 var x255192 = __toESM2(require_x255192());
-var ServerHelloRecord = class {
-  constructor(sessionId2, cipherSuite) {
-    this.keys = x255192.generateKeyPair();
-    this.keyShareEntry = new KeyShareEntry(NamedGroup.x25519, this.keys.publicKey);
-    this.serverHello = new ServerHello2(sessionId2, cipherSuite, this.keyShareEntry);
-    this.handshake = new Handshake2(this.serverHello);
-    this.record = new TLSPlaintext(this.handshake);
-  }
-};
 
 // secret.js
 var enc2 = new TextEncoder();
@@ -3747,21 +3713,21 @@ var Secret = class {
   clientSide;
   aead;
   constructor(clientHello, serverHello, client = false) {
-    this.clientSide = clientHello instanceof ClientHelloRecord && client ? true : false;
+    this.clientSide = check(clientHello).isInstanceOf(ClientHelloRecord) || client ? true : false;
     if (this.clientSide) {
-      if (serverHello.constructor.name !== "Record")
+      if (check(serverHello).isInstanceOf(Record) == false)
         throw TypeError(`expected type Record for serverHello`);
       this.keys.privateKey = clientHello.keys.privateKey ?? clientHello.keys.secretKey;
       this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
-      this.clientMsg = clientHello instanceof ClientHelloRecord ? clientHello.handshake : clientHello.message;
+      this.clientMsg = check(clientHello).isInstanceOf(ClientHelloRecord) ? clientHello.handshake : clientHello.message;
       this.serverMsg = serverHello.message;
     } else {
-      if (clientHello.constructor.name !== "Record")
+      if (check(clientHello).isInstanceOf(Record) == false)
         throw TypeError(`expected type Record for clientHello`);
       this.keys.privateKey = serverHello.keys.privateKey ?? serverHello.keys.secretKey;
       this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find((e) => e.name.includes("x25519")).key;
       this.clientMsg = clientHello.message;
-      this.serverMsg = serverHello instanceof ServerHelloRecord ? serverHello.handshake : serverHello.message;
+      this.serverMsg = check(serverHello).isInstanceOf(ClientHelloRecord) ? serverHello.handshake : serverHello.message;
     }
     const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split("_");
     this.sharedSecret = x255193.sharedKey(this.keys.privateKey, this.keys.publicKey);
@@ -3881,6 +3847,13 @@ var Aead = class {
     return new Uint8Array(output);
   }
 };
+function check(obj) {
+  return {
+    isInstanceOf(cls) {
+      return obj instanceof cls || obj?.constructor.name == cls.name;
+    }
+  };
+}
 export {
   Secret,
   emptyHashs
