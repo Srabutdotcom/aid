@@ -3745,19 +3745,20 @@ var Secret = class {
   clientMsg;
   serverMsg;
   clientSide;
+  aead;
   constructor(clientHello, serverHello, client = false) {
     this.clientSide = clientHello instanceof ClientHelloRecord && client ? true : false;
     if (this.clientSide) {
       if (serverHello.constructor.name !== "Record")
         throw TypeError(`expected type Record for serverHello`);
-      this.keys.privateKey = clientHello.keys.privateKey;
+      this.keys.privateKey = clientHello.keys.privateKey ?? clientHello.keys.secretKey;
       this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
       this.clientMsg = clientHello instanceof ClientHelloRecord ? clientHello.handshake : clientHello.message;
       this.serverMsg = serverHello.message;
     } else {
       if (clientHello.constructor.name !== "Record")
         throw TypeError(`expected type Record for clientHello`);
-      this.keys.privateKey = serverHello.keys.privateKey;
+      this.keys.privateKey = serverHello.keys.privateKey ?? serverHello.keys.secretKey;
       this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find((e) => e.name.includes("x25519")).key;
       this.clientMsg = clientHello.message;
       this.serverMsg = serverHello instanceof ServerHelloRecord ? serverHello.handshake : serverHello.message;
@@ -3828,10 +3829,56 @@ var Secret = class {
     this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
     const key = await this.hkdfExpandLabel(this.secret, "key", salt0, this.keyLength);
     const iv = await this.hkdfExpandLabel(this.secret, "iv", salt0, 12);
-    return {
-      key,
-      iv
+    this.aead = new Aead(key, iv);
+  }
+};
+var Aead = class {
+  //*AESGCM
+  /**
+   * 
+   * @param {Uint8Array} key 
+   * @param {Uint8Array} ivInit 
+   * @param {Uint8Array} recdata - record header
+   * @param {uint} seq - sequential record
+   */
+  constructor(key, ivInit, recdata, seq = 0) {
+    this.seq = seq;
+    this.key = key;
+    this.iv = ivInit;
+    this.algo = {
+      name: "AES-GCM",
+      iv: this.iv,
+      additionalData: recdata
+      //tagLength: 128 //*by default is 128
     };
+  }
+  buildIV() {
+    for (let i = 0; i < 8; i++) {
+      this.iv[this.iv.length - 1 - i] ^= this.seq >> i * 8 & 255;
+    }
+    this.seq++;
+  }
+  async importKey() {
+    if (this.cryptoKey)
+      return;
+    this.cryptoKey = await self.crypto.subtle.importKey("raw", this.key, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+  }
+  async encrypt(uint8, ad) {
+    await this.importKey();
+    this.algo = {
+      name: "AES-GCM",
+      iv: this.iv,
+      additionalData: ad
+      //tagLength: 128 //*by default is 128
+    };
+    const output = await self.crypto.subtle.encrypt(this.algo, this.cryptoKey, uint8);
+    this.buildIV();
+    return new Uint8Array(output);
+  }
+  async decrypt(data) {
+    await this.importKey();
+    const output = await self.crypto.subtle.decrypt(this.algo, this.cryptoKey, data);
+    return new Uint8Array(output);
   }
 };
 export {

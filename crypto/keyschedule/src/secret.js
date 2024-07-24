@@ -33,13 +33,13 @@ export class Secret {
       this.clientSide = ((clientHello instanceof ClientHelloRecord) && client) ? true : false
       if (this.clientSide) {
          if (serverHello.constructor.name !== 'Record') throw TypeError(`expected type Record for serverHello`)
-         this.keys.privateKey = clientHello.keys.privateKey
+         this.keys.privateKey = clientHello.keys.privateKey ?? clientHello.keys.secretKey;
          this.keys.publicKey = serverHello.Handshake.ServerHello.extensions.key_share.data.key;
          this.clientMsg = (clientHello instanceof ClientHelloRecord) ? clientHello.handshake : clientHello.message;
          this.serverMsg = serverHello.message;
       } else {
          if (clientHello.constructor.name !== 'Record') throw TypeError(`expected type Record for clientHello`)
-         this.keys.privateKey = serverHello.keys.privateKey
+         this.keys.privateKey = serverHello.keys.privateKey ?? serverHello.keys.secretKey;
          this.keys.publicKey = clientHello.Handshake.ClientHello.extensions.key_share.data.find(e => e.name.includes('x25519')).key;
          this.clientMsg = clientHello.message;
          this.serverMsg = (serverHello instanceof ServerHelloRecord) ? serverHello.handshake : serverHello.message;
