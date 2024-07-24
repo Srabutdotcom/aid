@@ -3923,7 +3923,7 @@ function parseCipher(serverHello) {
     const [tls, aes, encryptAlgo, gcm, hash] = serverHello.Handshake.ServerHello.cipher_suite.split("_");
     return {
       encryptAlgo,
-      hashAlgo: +hash.match(/(.{3})$/g)[0]
+      hash
     };
   }
   if (check(serverHello).isInstanceOf(ServerHelloRecord)) {
@@ -3931,7 +3931,7 @@ function parseCipher(serverHello) {
     const [tls, aes, encryptAlgo, gcm, hash] = handshake.ServerHello.cipher_suite.split("_");
     return {
       encryptAlgo,
-      hashAlgo: +hash.match(/(.{3})$/g)[0]
+      hash
     };
   }
 }
