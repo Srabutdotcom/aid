@@ -3,7 +3,7 @@ import * as x25519 from "@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
-import { ClientHelloRecord, ServerHelloRecord } from '../../tools/tls13def.js'
+import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify } from '../../tools/tls13def.js'
 
 const enc = new TextEncoder
 const salt0 = new Uint8Array(0)
@@ -26,8 +26,12 @@ export class Secret {
       privateKey: undefined,
       publicKey: undefined
    }
-   clientMsg
-   serverMsg
+   clientMsg // handshake
+   serverMsg // handshake
+   extensionsMsg // handshake
+   certificateMsg // handshake
+   certificateVerifyMsg // handshake
+   finishedMsg // handshake
    clientSide
    aead
    constructor(clientHello, serverHello, client = false) {
@@ -101,10 +105,47 @@ export class Secret {
       secret = await this.deriveSecret(secret, 'derived', salt0)
       secret = await this.hkdfExtract(secret, this.sharedSecret);
       const Label = this.clientSide ? 'c hs traffic' : 's hs traffic';
-      this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
+      this.transcriptMsg = concat(this.clientMsg, this.serverMsg)
+      this.secret = await this.deriveSecret(secret, Label, this.transcriptMsg);
       const key = await this.hkdfExpandLabel(this.secret, 'key', salt0, this.keyLength);
       const iv = await this.hkdfExpandLabel(this.secret, 'iv', salt0, 12);
       this.aead = new Aead(key, iv)
+      return this.aead;
+   }
+   async certificateVerify(privateKey, extensions, certificate) {
+      this.extensions = extensions
+      this.certificate = certificate
+      this.transcriptMsg = concat(this.transcriptMsg, extensions, certificate)
+      const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
+      // Create the context string
+      const context = enc.encode('TLS 1.3, server CertificateVerify');// NOTE context for server side
+      // Create the data to be signed
+      const space64from32 = enc.encode(String.fromCharCode(32).repeat(64)) // 64 space characters
+      const data2Sign = concat(context, space64from32, new Uint8Array([0]), new Uint8Array(transcriptHash));
+
+      const sign = await crypto.subtle.sign({
+         name: privateKey.algorithm.name,
+         saltLength: hashAlgo / 8
+      },
+         privateKey,
+         data2Sign)
+      // NOTE - how about ECDSA key
+      const certificate_verify = new CertificateVerify(SignatureScheme['rsa_pss_rsae_sha' + this.shaBit], new Uint8Array(sign))
+      this.certificate_verify = new HandshakeDef(certificate_verify)
+      return this.certificate_verify
+   }
+   async finished() {//LINK - https://datatracker.ietf.org/doc/html/rfc8446#section-4.4.4
+      const finished_key = await this.hkdfExpandLabel(this.secret, "finished", salt0);
+      this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
+      const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
+      const verify_data = await this.hkdfExtract(finished_key, transcriptHash);
+      this.finishedMsg = new HandshakeDef(
+         concat(
+            new Uint8Array([this.shaLength]),
+            verify_data
+         )
+      );
+      return this.finishedMsg
    }
 }
 

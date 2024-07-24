@@ -1519,7 +1519,7 @@ function signature_algorithms(value) {
   const end = value.pos + payloadLength;
   while (true) {
     const code = value.uint16();
-    const algo = SignatureScheme[code] ?? "unknown";
+    const algo = SignatureScheme2[code] ?? "unknown";
     signatureAlgoritm.push(`${uinToHex(code, 4)}-${algo}`);
     if (value.pos >= end)
       break;
@@ -1597,7 +1597,7 @@ var namedGroup = Object.freeze({
   260: "ffdhe8192"
   /*0xFFFF-16 bytes-max*/
 });
-var SignatureScheme = Object.freeze({
+var SignatureScheme2 = Object.freeze({
   /* RSASSA-PKCS1-v1_5 algorithms */
   1025: "rsa_pkcs1_sha256",
   1281: "rsa_pkcs1_sha384",
@@ -1833,7 +1833,7 @@ function CertificateRequest(value, length) {
 }
 function CertificateVerify(value, length) {
   const sigCode = value.uint16();
-  const signatureAlgoritm = `${uinToHex(sigCode, 4)}-${SignatureScheme[sigCode]}`;
+  const signatureAlgoritm = `${uinToHex(sigCode, 4)}-${SignatureScheme2[sigCode]}`;
   const len = value.uint16();
   const signature = value.sliceMovePos(len);
   return {
@@ -3558,7 +3558,7 @@ var SupportedVersions = class extends Struct {
     super(versions);
   }
 };
-var SignatureScheme2 = class {
+var SignatureScheme3 = class {
   /* RSASSA-PKCS1-v1_5 algorithms */
   /* rsa_pkcs1_sha256(0x0401),
   rsa_pkcs1_sha384(0x0501),
@@ -3597,15 +3597,15 @@ var SignatureScheme2 = class {
 var SignatureSchemeList = class extends Struct {
   constructor() {
     const supported_signature_algorithms = mergeUint8(
-      SignatureScheme2.ecdsa_secp256r1_sha256,
-      SignatureScheme2.ecdsa_secp384r1_sha384,
-      SignatureScheme2.ecdsa_secp521r1_sha512,
-      SignatureScheme2.rsa_pss_rsae_sha256,
-      SignatureScheme2.rsa_pss_rsae_sha384,
-      SignatureScheme2.rsa_pss_rsae_sha512,
-      SignatureScheme2.rsa_pss_pss_sha256,
-      SignatureScheme2.rsa_pss_pss_sha384,
-      SignatureScheme2.rsa_pss_pss_sha512
+      SignatureScheme3.ecdsa_secp256r1_sha256,
+      SignatureScheme3.ecdsa_secp384r1_sha384,
+      SignatureScheme3.ecdsa_secp521r1_sha512,
+      SignatureScheme3.rsa_pss_rsae_sha256,
+      SignatureScheme3.rsa_pss_rsae_sha384,
+      SignatureScheme3.rsa_pss_rsae_sha512,
+      SignatureScheme3.rsa_pss_pss_sha256,
+      SignatureScheme3.rsa_pss_pss_sha384,
+      SignatureScheme3.rsa_pss_pss_sha512
     );
     const signatureScheme = new VariableVector(supported_signature_algorithms, 2, 65534);
     super(signatureScheme);
@@ -3724,6 +3724,17 @@ var CertificateType = class {
   /* From RFC 7250 ASN.1_subjectPublicKeyInfo */
   static Max = new Uint8(255);
 };
+var CertificateVerify2 = class extends Struct {
+  type = HandshakeType.certificate_verify;
+  constructor(algorithm, signature) {
+    const SignatureScheme22 = algorithm;
+    const signatureVector = new VariableVector(signature, 0, 2 ** 16 - 1);
+    super(
+      SignatureScheme22,
+      signatureVector
+    );
+  }
+};
 var KeyUpdateRequest = class {
   static update_not_requested = new Uint8(0);
   static update_requested = new Uint8(1);
@@ -3773,7 +3784,17 @@ var Secret = class {
     publicKey: void 0
   };
   clientMsg;
+  // handshake
   serverMsg;
+  // handshake
+  extensionsMsg;
+  // handshake
+  certificateMsg;
+  // handshake
+  certificateVerifyMsg;
+  // handshake
+  finishedMsg;
+  // handshake
   clientSide;
   aead;
   constructor(clientHello, serverHello, client = false) {
@@ -3856,10 +3877,45 @@ var Secret = class {
     secret = await this.deriveSecret(secret, "derived", salt0);
     secret = await this.hkdfExtract(secret, this.sharedSecret);
     const Label = this.clientSide ? "c hs traffic" : "s hs traffic";
-    this.secret = await this.deriveSecret(secret, Label, concat(this.clientMsg, this.serverMsg));
+    this.transcriptMsg = concat(this.clientMsg, this.serverMsg);
+    this.secret = await this.deriveSecret(secret, Label, this.transcriptMsg);
     const key = await this.hkdfExpandLabel(this.secret, "key", salt0, this.keyLength);
     const iv = await this.hkdfExpandLabel(this.secret, "iv", salt0, 12);
     this.aead = new Aead(key, iv);
+    return this.aead;
+  }
+  async certificateVerify(privateKey, extensions, certificate) {
+    this.extensions = extensions;
+    this.certificate = certificate;
+    this.transcriptMsg = concat(this.transcriptMsg, extensions, certificate);
+    const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
+    const context = enc2.encode("TLS 1.3, server CertificateVerify");
+    const space64from32 = enc2.encode(String.fromCharCode(32).repeat(64));
+    const data2Sign = concat(context, space64from32, new Uint8Array([0]), new Uint8Array(transcriptHash));
+    const sign = await crypto.subtle.sign(
+      {
+        name: privateKey.algorithm.name,
+        saltLength: hashAlgo / 8
+      },
+      privateKey,
+      data2Sign
+    );
+    const certificate_verify = new CertificateVerify2(SignatureScheme["rsa_pss_rsae_sha" + this.shaBit], new Uint8Array(sign));
+    this.certificate_verify = new Handshake2(certificate_verify);
+    return this.certificate_verify;
+  }
+  async finished() {
+    const finished_key = await this.hkdfExpandLabel(this.secret, "finished", salt0);
+    this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
+    const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
+    const verify_data = await this.hkdfExtract(finished_key, transcriptHash);
+    this.finishedMsg = new Handshake2(
+      concat(
+        new Uint8Array([this.shaLength]),
+        verify_data
+      )
+    );
+    return this.finishedMsg;
   }
 };
 var Aead = class {
