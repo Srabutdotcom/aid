@@ -3955,6 +3955,7 @@ var Secret = class {
   }
   async decrypt(msg, add) {
     const decrypt = await this.aead.client.decrypt(msg, add);
+    return decrypt;
   }
 };
 var Aead = class {
