@@ -4000,8 +4000,9 @@ var Aead = class {
     this.buildIV();
     return new Uint8Array(output);
   }
-  async decrypt(data) {
+  async decrypt(data, add) {
     await this.importKey();
+    this.algo.additionalData = add;
     const output = await self.crypto.subtle.decrypt(this.algo, this.cryptoKey, data);
     return new Uint8Array(output);
   }
