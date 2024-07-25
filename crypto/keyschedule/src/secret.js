@@ -167,8 +167,8 @@ export class Secret {
       const encrypted = await this.aead.server.encrypt(handshakeMsg, header);
       return new TLSCiphertext(encrypted);
    }
-   async decrypt(msg){
-      const decrypt = await this.aead.client.decrypt(msg)
+   async decrypt(msg, add){
+      const decrypt = await this.aead.client.decrypt(msg, add)
    }
 }
 
