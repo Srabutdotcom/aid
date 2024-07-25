@@ -3474,7 +3474,7 @@ var ServerHello2 = class extends Struct {
     const random = new Random();
     const session_id = new VariableVector(sessionId2, 0, 32);
     const compression2 = new Uint8(0);
-    const cipherSuite = new Uint16(cipherSuites.find((e) => ciphers.map((f) => getUint162(f) == e)));
+    const cipherSuite = ciphers.find((e) => cipherSuites.map((f) => getUint162(e) == f));
     const extensions = [
       new Extension(ExtensionType.supported_versions, new SupportedVersions()),
       new Extension(ExtensionType.key_share, new KeyShareServerHello(keyShareEntry2))
@@ -3782,6 +3782,7 @@ var ServerHelloRecord = class {
 };
 
 // secret.js
+import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";
 var enc2 = new TextEncoder();
 var salt0 = new Uint8Array(0);
 var emptyHashs = Object.freeze({
@@ -3942,6 +3943,8 @@ var Secret = class {
     this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
     const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
     const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
+    const vd = hmac(`sha${this.shaBit}`, finished_key, this.transcriptMsg);
+    debugger;
     this.finishedMsg = new Handshake2(
       new Finished2(verify_data)
     );

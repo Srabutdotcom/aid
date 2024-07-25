@@ -5,6 +5,7 @@ import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
 import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, SignatureScheme, Finished } from '../../tools/tls13def.js'
 import { TLSCiphertext } from "../../tools/tls13def.js";
+import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";// NOTE just to compare
 
 const enc = new TextEncoder
 const salt0 = new Uint8Array(0)
@@ -156,6 +157,7 @@ export class Secret {
       this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
       const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
       const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
+      const vd = hmac(`sha${this.shaBit}`, finished_key, this.transcriptMsg); debugger;
       this.finishedMsg = new HandshakeDef(
          new Finished(verify_data)
       );
