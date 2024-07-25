@@ -3938,7 +3938,7 @@ var Secret = class {
     return this.certificate_verify;
   }
   async finished() {
-    const finished_key = await this.hkdfExpandLabel(this.secret, "finished", salt0);
+    const finished_key = await this.hkdfExpandLabel(this.secrets["s hs traffic"], "finished", salt0);
     this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
     const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
     const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
@@ -3950,8 +3950,11 @@ var Secret = class {
   async encrypt() {
     const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg);
     const header = concat(new Uint8Array([23, 3, 3], Uint16BE(handshakeMsg.length)));
-    const encrypted = await this.aead.encrypt(handshakeMsg, header);
+    const encrypted = await this.aead.server.encrypt(handshakeMsg, header);
     return new TLSCiphertext(encrypted);
+  }
+  async decrypt(msg) {
+    const decrypt = await this.aead.client.decrypt(msg);
   }
 };
 var Aead = class {

@@ -36,9 +36,9 @@ export class Secret {
    certificateVerifyMsg // handshake
    finishedMsg // handshake
    clientSide
-   key = {server:undefined, client:undefined}
-   iv = {server:undefined, client:undefined}
-   aead = {server:undefined, client:undefined} // Aead class
+   key = { server: undefined, client: undefined }
+   iv = { server: undefined, client: undefined }
+   aead = { server: undefined, client: undefined } // Aead class
    constructor(clientHello, serverHello, client = false) {
       this.clientSide = (check(clientHello).isInstanceOf(ClientHelloRecord) || client) ? true : false
       if (this.clientSide) {
@@ -63,9 +63,9 @@ export class Secret {
       this.IKM0 = new Uint8Array(this.shaLength);
    }
    async earlySecret() {
-      if(this._earlySecret)return this._earlySecret;
+      if (this._earlySecret) return this._earlySecret;
       this._earlySecret = await this.hkdfExtract(salt0, this.IKM0);
-      return this._earlySecret 
+      return this._earlySecret
    }
    async hkdfExtract(key, info) {
       if (key.length == 0) key = new Uint8Array(this.shaLength)
@@ -111,14 +111,14 @@ export class Secret {
       let earlySecret = await this.earlySecret();
       this.secrets['derived'] = await this.deriveSecret(earlySecret, 'derived', salt0)
       this.secrets['handshake'] = await this.hkdfExtract(this.secrets['derived'], this.sharedSecret);
-   
+
       this.transcriptMsg = concat(this.clientMsg, this.serverMsg)
       this.secrets['c hs traffic'] = await this.deriveSecret(this.secrets['handshake'], 'c hs traffic', this.transcriptMsg);
       this.secrets['s hs traffic'] = await this.deriveSecret(this.secrets['handshake'], 's hs traffic', this.transcriptMsg);
 
       this.secrets['derived'] = await this.deriveSecret(this.secrets['handshake'], 'derived', salt0);
       this.secrets['master'] = await this.hkdfExtract(this.secrets['derived'], this.IKM0);
-      
+
       this.key.server = await this.hkdfExpandLabel(this.secrets['s hs traffic'], 'key', salt0, this.keyLength);
       this.iv.server = await this.hkdfExpandLabel(this.secrets['s hs traffic'], 'iv', salt0, 12);
 
@@ -152,7 +152,7 @@ export class Secret {
       return this.certificate_verify
    }
    async finished() {//LINK - https://datatracker.ietf.org/doc/html/rfc8446#section-4.4.4
-      const finished_key = await this.hkdfExpandLabel(this.secret, "finished", salt0);
+      const finished_key = await this.hkdfExpandLabel(this.secrets['s hs traffic'], "finished", salt0);
       this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
       const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
       const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
@@ -161,11 +161,14 @@ export class Secret {
       );
       return this.finishedMsg
    }
-   async encrypt(){
+   async encrypt() {
       const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg);
-      const header = concat(new Uint8Array([23,3,3],Uint16BE(handshakeMsg.length)));
-      const encrypted = await this.aead.encrypt(handshakeMsg, header);
+      const header = concat(new Uint8Array([23, 3, 3], Uint16BE(handshakeMsg.length)));
+      const encrypted = await this.aead.server.encrypt(handshakeMsg, header);
       return new TLSCiphertext(encrypted);
+   }
+   async decrypt(msg){
+      const decrypt = await this.aead.client.decrypt(msg)
    }
 }
 
