@@ -69,7 +69,7 @@ export class Secret {
    }
    async hkdfExtract(key, info) {
       if (key.length == 0) key = new Uint8Array(this.shaLength)
-      const baseKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-" + this.shaBit }, false, ["sign"])
+      const baseKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-" + this.shaBit }, false, ["sign","verify"])
       const derivedKey = await crypto.subtle.sign({ name: "HMAC" }, baseKey, info)
       return new Uint8Array(derivedKey)
    }
