@@ -3818,7 +3818,9 @@ var Secret = class {
   finishedMsg;
   // handshake
   clientSide;
-  aead;
+  key = { server: void 0, client: void 0 };
+  iv = { server: void 0, client: void 0 };
+  aead = { server: void 0, client: void 0 };
   // Aead class
   constructor(clientHello, serverHello, client = false) {
     this.clientSide = check(clientHello).isInstanceOf(ClientHelloRecord) || client ? true : false;
@@ -3907,10 +3909,13 @@ var Secret = class {
     this.secrets["s hs traffic"] = await this.deriveSecret(this.secrets["handshake"], "s hs traffic", this.transcriptMsg);
     this.secrets["derived"] = await this.deriveSecret(this.secrets["handshake"], "derived", salt0);
     this.secrets["master"] = await this.hkdfExtract(this.secrets["derived"], this.IKM0);
-    const key = await this.hkdfExpandLabel(this.secret, "key", salt0, this.keyLength);
-    const iv = await this.hkdfExpandLabel(this.secret, "iv", salt0, 12);
-    this.aead = new Aead(key, iv);
-    return this.aead;
+    this.key.server = await this.hkdfExpandLabel(this.secrets["s hs traffic"], "key", salt0, this.keyLength);
+    this.iv.server = await this.hkdfExpandLabel(this.secrets["s hs traffic"], "iv", salt0, 12);
+    this.key.client = await this.hkdfExpandLabel(this.secrets["c hs traffic"], "key", salt0, this.keyLength);
+    this.iv.client = await this.hkdfExpandLabel(this.secrets["c hs traffic"], "iv", salt0, 12);
+    this.aead.server = new Aead(this.key.server, this.iv.server);
+    this.aead.client = new Aead(this.key.client, this.iv.client);
+    return true;
   }
   async certificateVerify(privateKey, extensions, certificate) {
     this.extensions = extensions;

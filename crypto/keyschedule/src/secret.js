@@ -36,7 +36,9 @@ export class Secret {
    certificateVerifyMsg // handshake
    finishedMsg // handshake
    clientSide
-   aead // Aead class
+   key = {server:undefined, client:undefined}
+   iv = {server:undefined, client:undefined}
+   aead = {server:undefined, client:undefined} // Aead class
    constructor(clientHello, serverHello, client = false) {
       this.clientSide = (check(clientHello).isInstanceOf(ClientHelloRecord) || client) ? true : false
       if (this.clientSide) {
@@ -116,11 +118,16 @@ export class Secret {
 
       this.secrets['derived'] = await this.deriveSecret(this.secrets['handshake'], 'derived', salt0);
       this.secrets['master'] = await this.hkdfExtract(this.secrets['derived'], this.IKM0);
+      
+      this.key.server = await this.hkdfExpandLabel(this.secrets['s hs traffic'], 'key', salt0, this.keyLength);
+      this.iv.server = await this.hkdfExpandLabel(this.secrets['s hs traffic'], 'iv', salt0, 12);
 
-      const key = await this.hkdfExpandLabel(this.secret, 'key', salt0, this.keyLength);
-      const iv = await this.hkdfExpandLabel(this.secret, 'iv', salt0, 12);
-      this.aead = new Aead(key, iv)
-      return this.aead;
+      this.key.client = await this.hkdfExpandLabel(this.secrets['c hs traffic'], 'key', salt0, this.keyLength);
+      this.iv.client = await this.hkdfExpandLabel(this.secrets['c hs traffic'], 'iv', salt0, 12);
+
+      this.aead.server = new Aead(this.key.server, this.iv.server);
+      this.aead.client = new Aead(this.key.client, this.iv.client);
+      return true;
    }
    async certificateVerify(privateKey, extensions, certificate) {
       this.extensions = extensions
