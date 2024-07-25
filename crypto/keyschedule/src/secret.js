@@ -19,9 +19,11 @@ export class Secret {
    emptyHash;
    IKM0
    secret
+   secrets = {}
    shaBit // i.e. SHA-Bit --> SHA-256
    shaLength // will determine key length
    keyLength
+   _earlySecret
    sharedSecret
    keys = {
       privateKey: undefined,
@@ -59,7 +61,9 @@ export class Secret {
       this.IKM0 = new Uint8Array(this.shaLength);
    }
    async earlySecret() {
-      return await this.hkdfExtract(salt0, this.IKM0);
+      if(this._earlySecret)return this._earlySecret;
+      this._earlySecret = await this.hkdfExtract(salt0, this.IKM0);
+      return this._earlySecret 
    }
    async hkdfExtract(key, info) {
       if (key.length == 0) key = new Uint8Array(this.shaLength)
@@ -102,12 +106,17 @@ export class Secret {
       return await this.hkdfExpandLabel(secret, Label, transcriptHash, Length)
    }
    async handshakeSecret() {
-      let secret = await this.earlySecret();
-      secret = await this.deriveSecret(secret, 'derived', salt0)
-      secret = await this.hkdfExtract(secret, this.sharedSecret);
-      const Label = this.clientSide ? 'c hs traffic' : 's hs traffic';
+      let earlySecret = await this.earlySecret();
+      this.secrets['derived'] = await this.deriveSecret(earlySecret, 'derived', salt0)
+      this.secrets['handshake'] = await this.hkdfExtract(this.secrets['derived'], this.sharedSecret);
+   
       this.transcriptMsg = concat(this.clientMsg, this.serverMsg)
-      this.secret = await this.deriveSecret(secret, Label, this.transcriptMsg);
+      this.secrets['c hs traffic'] = await this.deriveSecret(this.secrets['handshake'], 'c hs traffic', this.transcriptMsg);
+      this.secrets['s hs traffic'] = await this.deriveSecret(this.secrets['handshake'], 's hs traffic', this.transcriptMsg);
+
+      this.secrets['derived'] = await this.deriveSecret(this.secrets['handshake'], 'derived', salt0);
+      this.secrets['master'] = await this.hkdfExtract(this.secrets['derived'], this.IKM0);
+
       const key = await this.hkdfExpandLabel(this.secret, 'key', salt0, this.keyLength);
       const iv = await this.hkdfExpandLabel(this.secret, 'iv', salt0, 12);
       this.aead = new Aead(key, iv)
