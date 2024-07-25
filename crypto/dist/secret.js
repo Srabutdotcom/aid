@@ -3950,11 +3950,11 @@ var Secret = class {
   async encrypt() {
     const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg);
     const header = concat(new Uint8Array([23, 3, 3], Uint16BE(handshakeMsg.length)));
-    const encrypted = await this.aead.server.encrypt(handshakeMsg, header);
+    const encrypted = await this.aead[this.clientSide ? "client" : "server"].encrypt(handshakeMsg, header);
     return new TLSCiphertext(encrypted);
   }
   async decrypt(msg, add) {
-    const decrypt = await this.aead.client.decrypt(msg, add);
+    const decrypt = await this.aead[this.clientSide ? "server" : "client"].decrypt(msg, add);
     return decrypt;
   }
 };
