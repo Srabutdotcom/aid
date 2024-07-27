@@ -164,7 +164,7 @@ export class Secret {
       return this.finishedMsg
    }
    async encrypt() {
-      const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg);
+      const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg, new Uint8Array([0x16]));//NOTE 0x16 is handshake record
       const header = concat(new Uint8Array([23, 3, 3], Uint16BE(handshakeMsg.length)));
       const encrypted = await this.aead[this.clientSide?'client':'server'].encrypt(handshakeMsg, header);
       return new TLSCiphertext(encrypted);

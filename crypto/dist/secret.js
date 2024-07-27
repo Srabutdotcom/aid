@@ -1657,17 +1657,15 @@ var handShakes = Object.freeze({
   //RESERVED
   20: Finished
 });
-function Handshake(_value, length) {
-  const value = ensureUint8View(_value);
+function Handshake(_value, pos) {
+  const value = ensureUint8View(_value, pos);
   const typeCode = value.uint8();
-  const typeFunc = handShakes[typeCode];
-  if (!typeFunc || typeof typeCode == "string") {
-    throw TypeError(`Unexpected type of record value ${typeCode}`);
-  }
+  const typeFunc = typeof handShakes[typeCode] == "string" ? genericHandshake : handShakes[typeCode];
+  const name = typeof handShakes[typeCode] == "string" ? handShakes[typeCode] : typeFunc.name;
   const payloadLength = value.uint24();
   return {
     length: payloadLength,
-    [typeFunc.name]: typeFunc(value, payloadLength),
+    [name]: typeFunc(value, payloadLength, name),
     value
   };
 }
@@ -1703,7 +1701,7 @@ function extension(value) {
   }
   return exts;
 }
-function ServerHello(value, length) {
+function ServerHello(value, length, type = "server_hello") {
   value.type = "server_hello";
   const versionCode = value.uint16();
   if (versionCode !== 771) {
@@ -1804,7 +1802,12 @@ function Certificate(value, length) {
   let len = value.uint8();
   const certificate_request_context = value.sliceMovePos(len);
   len = value.uint24();
-  const certificate_list = CertificateEntry(value, len);
+  const certificate_list = [];
+  while (true) {
+    certificate_list.push(CertificateEntry(value, len));
+    if (value.pos >= len)
+      break;
+  }
   return {
     certificate_request_context,
     certificate_list
@@ -1846,6 +1849,10 @@ function Finished(value, length) {
   return {
     verify_data
   };
+}
+function genericHandshake(value, length, type) {
+  value.type = type;
+  return value.sliceMovePos(length);
 }
 function Alert(value, length) {
   const levelCode = value.uint8();
@@ -3951,7 +3958,7 @@ var Secret = class {
     return this.finishedMsg;
   }
   async encrypt() {
-    const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg);
+    const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg, new Uint8Array([22]));
     const header = concat(new Uint8Array([23, 3, 3], Uint16BE(handshakeMsg.length)));
     const encrypted = await this.aead[this.clientSide ? "client" : "server"].encrypt(handshakeMsg, header);
     return new TLSCiphertext(encrypted);
