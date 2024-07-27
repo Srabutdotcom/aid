@@ -3,9 +3,10 @@ import * as x25519 from "@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
-import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, SignatureScheme, Finished } from '../../tools/tls13def.js'
+import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, 
+   SignatureScheme, Finished, EncryptedExtensions } from '../../tools/tls13def.js'
 import { TLSCiphertext } from "../../tools/tls13def.js";
-import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";// NOTE just to compare
+//import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";// NOTE just to compare
 
 const enc = new TextEncoder
 const salt0 = new Uint8Array(0)
@@ -32,10 +33,11 @@ export class Secret {
    }
    clientMsg // handshake
    serverMsg // handshake
-   extensionsMsg // handshake
+   extensionsMsg = new HandshakeDef(new EncryptedExtensions(new Uint8Array(0)));// handshake
    certificateMsg // handshake
    certificateVerifyMsg // handshake
    finishedMsg // handshake
+   transcriptMsg
    clientSide
    key = { server: undefined, client: undefined }
    iv = { server: undefined, client: undefined }
@@ -109,7 +111,7 @@ export class Secret {
       return await this.hkdfExpandLabel(secret, Label, transcriptHash, Length)
    }
    async handshakeSecret() {
-      let earlySecret = await this.earlySecret();
+      const earlySecret = await this.earlySecret();
       this.secrets['derived'] = await this.deriveSecret(earlySecret, 'derived', salt0)
       this.secrets['handshake'] = await this.hkdfExtract(this.secrets['derived'], this.sharedSecret);
 
@@ -128,12 +130,14 @@ export class Secret {
 
       this.aead.server = new Aead(this.key.server, this.iv.server);
       this.aead.client = new Aead(this.key.client, this.iv.client);
+
+      // add extensions
+      this.transcriptMsg = concat(this.transcriptMsg, this.extensionsMsg)
       return true;
    }
-   async certificateVerify(privateKey, extensions, certificate) {
-      this.extensions = extensions
-      this.certificate = certificate
-      this.transcriptMsg = concat(this.transcriptMsg, extensions, certificate)
+   async certificateVerify(privateKey, certificate) {
+      this.certificateMsg = certificate
+      this.transcriptMsg = concat(this.transcriptMsg, this.certificateMsg)
       const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
       // Create the context string
       const context = enc.encode('TLS 1.3, server CertificateVerify');// NOTE context for server side
@@ -149,22 +153,22 @@ export class Secret {
          data2Sign)
       // NOTE - how about ECDSA key
       const certificate_verify = new CertificateVerify(SignatureScheme['rsa_pss_rsae_sha' + this.shaBit], new Uint8Array(sign))
-      this.certificate_verify = new HandshakeDef(certificate_verify)
-      return this.certificate_verify
+      this.certificateVerifyMsg = new HandshakeDef(certificate_verify)
+      return this.certificateVerifyMsg
    }
    async finished() {//LINK - https://datatracker.ietf.org/doc/html/rfc8446#section-4.4.4
       const finished_key = await this.hkdfExpandLabel(this.secrets['s hs traffic'], "finished", salt0);
-      this.transcriptMsg = concat(this.transcriptMsg, this.certificate_verify);
+      if(this.certificateVerifyMsg)this.transcriptMsg = concat(this.transcriptMsg, this.certificateVerifyMsg);
       const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
       const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
-      const vd = hmac(`sha${this.shaBit}`, finished_key, this.transcriptMsg); debugger;
+      //const vd = hmac(`sha${this.shaBit}`, finished_key, this.transcriptMsg); debugger;
       this.finishedMsg = new HandshakeDef(
          new Finished(verify_data)
       );
       return this.finishedMsg
    }
    async encrypt() {
-      const handshakeMsg = concat(this.extensions, this.certificate, this.certificate_verify, this.finishedMsg, new Uint8Array([0x16]));//NOTE 0x16 is handshake record
+      const handshakeMsg = concat(this.transcriptMsg, this.finishedMsg, new Uint8Array([0x16]));//NOTE 0x16 is handshake record
       const header = concat(new Uint8Array([23, 3, 3], Uint16BE(handshakeMsg.length)));
       const encrypted = await this.aead[this.clientSide?'client':'server'].encrypt(handshakeMsg, header);
       return new TLSCiphertext(encrypted);
