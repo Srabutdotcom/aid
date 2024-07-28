@@ -3973,6 +3973,7 @@ var Secret = class {
     return new TLSCiphertext(encrypted);
   }
   async decrypt(msg, add) {
+    add = add ?? concat(new Uint8Array([23, 3, 3]), Uint16BE(msg.length - this.keyLength));
     const decrypt = await this.aead[this.clientSide ? "server" : "client"].decrypt(msg, add);
     return decrypt;
   }
