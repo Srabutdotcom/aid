@@ -3967,7 +3967,7 @@ var Secret = class {
     return this.finishedMsg;
   }
   async encrypt() {
-    const handshakeMsg = concat(this.transcriptMsg, this.finishedMsg, new Uint8Array([22]));
+    const handshakeMsg = concat(this.extensionsMsg, this.certificateMsg, this.certificateVerifyMsg, this.finishedMsg, new Uint8Array([22]));
     const header = concat(new Uint8Array([23, 3, 3]), Uint16BE(handshakeMsg.length + this.keyLength));
     const encrypted = await this.aead[this.clientSide ? "client" : "server"].encrypt(handshakeMsg, header);
     return new TLSCiphertext(encrypted);
