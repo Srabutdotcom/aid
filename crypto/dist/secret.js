@@ -3968,12 +3968,12 @@ var Secret = class {
   }
   async encrypt() {
     const handshakeMsg = concat(this.transcriptMsg, this.finishedMsg, new Uint8Array([22]));
-    const header = concat(new Uint8Array([23, 3, 3]), Uint16BE(handshakeMsg.length));
+    const header = concat(new Uint8Array([23, 3, 3]), Uint16BE(handshakeMsg.length + this.keyLength));
     const encrypted = await this.aead[this.clientSide ? "client" : "server"].encrypt(handshakeMsg, header);
     return new TLSCiphertext(encrypted);
   }
   async decrypt(msg, add) {
-    add = add ?? concat(new Uint8Array([23, 3, 3]), Uint16BE(msg.length - this.keyLength));
+    add = add ?? concat(new Uint8Array([23, 3, 3]), Uint16BE(msg.length));
     const decrypt = await this.aead[this.clientSide ? "server" : "client"].decrypt(msg, add);
     return decrypt;
   }

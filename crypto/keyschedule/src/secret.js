@@ -3,8 +3,10 @@ import * as x25519 from "@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
-import { ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify, 
-   SignatureScheme, Finished, EncryptedExtensions } from '../../tools/tls13def.js'
+import {
+   ClientHelloRecord, ServerHelloRecord, Handshake as HandshakeDef, CertificateVerify,
+   SignatureScheme, Finished, EncryptedExtensions
+} from '../../tools/tls13def.js'
 import { TLSCiphertext } from "../../tools/tls13def.js";
 //import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";// NOTE just to compare
 
@@ -72,7 +74,7 @@ export class Secret {
    }
    async hkdfExtract(key, info) {
       if (key.length == 0) key = new Uint8Array(this.shaLength)
-      const baseKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-" + this.shaBit }, false, ["sign","verify"])
+      const baseKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-" + this.shaBit }, false, ["sign", "verify"])
       const derivedKey = await crypto.subtle.sign({ name: "HMAC" }, baseKey, info)
       return new Uint8Array(derivedKey)
    }
@@ -158,7 +160,7 @@ export class Secret {
    }
    async finished() {//LINK - https://datatracker.ietf.org/doc/html/rfc8446#section-4.4.4
       const finished_key = await this.hkdfExpandLabel(this.secrets['s hs traffic'], "finished", salt0);
-      if(this.certificateVerifyMsg)this.transcriptMsg = concat(this.transcriptMsg, this.certificateVerifyMsg);
+      if (this.certificateVerifyMsg) this.transcriptMsg = concat(this.transcriptMsg, this.certificateVerifyMsg);
       const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
       const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
       //const vd = hmac(`sha${this.shaBit}`, finished_key, this.transcriptMsg); debugger;
@@ -169,13 +171,13 @@ export class Secret {
    }
    async encrypt() {
       const handshakeMsg = concat(this.transcriptMsg, this.finishedMsg, new Uint8Array([0x16]));//NOTE 0x16 is handshake record
-      const header = concat(new Uint8Array([23, 3, 3]), Uint16BE(handshakeMsg.length));
-      const encrypted = await this.aead[this.clientSide?'client':'server'].encrypt(handshakeMsg, header);
+      const header = concat(new Uint8Array([23, 3, 3]), Uint16BE(handshakeMsg.length + this.keyLength));
+      const encrypted = await this.aead[this.clientSide ? 'client' : 'server'].encrypt(handshakeMsg, header);
       return new TLSCiphertext(encrypted);
    }
-   async decrypt(msg, add){
-      add = add?? concat(new Uint8Array([23, 3, 3]), Uint16BE(msg.length-this.keyLength))
-      const decrypt = await this.aead[this.clientSide?'server':'client'].decrypt(msg, add);
+   async decrypt(msg, add) {
+      add = add ?? concat(new Uint8Array([23, 3, 3]), Uint16BE(msg.length))
+      const decrypt = await this.aead[this.clientSide ? 'server' : 'client'].decrypt(msg, add);
       return decrypt
    }
 }
