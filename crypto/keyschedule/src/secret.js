@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-unused-vars
-import * as x25519 from "@stablelib/x25519"
+import * as x25519 from "npm:@stablelib/x25519"
 import { Uint16BE } from '../../../byte/set.js';
 import { concat } from '../../../byte/concat.js';
 import { Record, Handshake } from '../../tools/tls13parser.js';
@@ -121,9 +121,6 @@ export class Secret {
       this.secrets['c hs traffic'] = await this.deriveSecret(this.secrets['handshake'], 'c hs traffic', this.transcriptMsg);
       this.secrets['s hs traffic'] = await this.deriveSecret(this.secrets['handshake'], 's hs traffic', this.transcriptMsg);
 
-      this.secrets['derived'] = await this.deriveSecret(this.secrets['handshake'], 'derived', salt0);
-      this.secrets['master'] = await this.hkdfExtract(this.secrets['derived'], this.IKM0);
-
       this.key.server = await this.hkdfExpandLabel(this.secrets['s hs traffic'], 'key', salt0, this.keyLength);
       this.iv.server = await this.hkdfExpandLabel(this.secrets['s hs traffic'], 'iv', salt0, 12);
 
@@ -168,6 +165,29 @@ export class Secret {
          new Finished(verify_data)
       );
       return this.finishedMsg
+   }
+   async masterSecret() {
+      this.secrets['derived'] = await this.deriveSecret(this.secrets['handshake'], 'derived', salt0);
+      this.secrets['master'] = await this.hkdfExtract(this.secrets['derived'], this.IKM0);
+
+      this.transcriptMsg = concat(this.transcriptMsg, this.finishedMsg);
+      this.secrets['c ap traffic'] = await this.deriveSecret(this.secrets['master'], 'c ap traffic', this.transcriptMsg);
+      this.secrets['s ap traffic'] = await this.deriveSecret(this.secrets['master'], 's ap traffic', this.transcriptMsg);
+
+      this.key.server = await this.hkdfExpandLabel(this.secrets['s ap traffic'], 'key', salt0, this.keyLength);
+      this.iv.server = await this.hkdfExpandLabel(this.secrets['s ap traffic'], 'iv', salt0, 12);
+
+      this.key.client = await this.hkdfExpandLabel(this.secrets['c ap traffic'], 'key', salt0, this.keyLength);
+      this.iv.client = await this.hkdfExpandLabel(this.secrets['c ap traffic'], 'iv', salt0, 12);
+
+      this.aead.server = new Aead(this.key.server, this.iv.server);
+      this.aead.client = new Aead(this.key.client, this.iv.client);
+   }
+   async expmasterSecret(){
+      this.secrets['exp master'] = await this.deriveSecret(this.secrets['master'], 'exp master', this.transcriptMsg);
+   }
+   async resmasterSecret(){
+      this.secrets['res master'] = await this.deriveSecret(this.secrets['master'], 'res master', this.transcriptMsg);
    }
    async encrypt() {
       const handshakeMsg = concat(this.extensionsMsg, this.certificateMsg, this.certificateVerifyMsg, this.finishedMsg, new Uint8Array([0x16]));//NOTE 0x16 is handshake record
@@ -255,4 +275,4 @@ function parseCipher(serverHello) {
    }
 }
 
-//`esbuild ./secret.js --bundle --format=esm --target=esnext --outfile=../../dist/secret.js`
+//`esbuild ./secret.js --bundle --format=esm --target=esnext --outfile=../../dist/secret.js --external:npm:@stablelib/x25519`
