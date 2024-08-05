@@ -2670,6 +2670,15 @@ var Secret = class {
     this.emptyHash = emptyHashs[this.shaBit];
     this.IKM0 = new Uint8Array(this.shaLength);
   }
+  /**
+   * To generate early secret based on salt from the top and
+   * the IKM argument from the left.
+   * the salt is 0 and the the IKM is either PSK (if available) or 
+   * the 0-value consisting of a string of Hash.length bytes set to zeros is used.
+   * or in formula HKDF-extract(0,0); 0 => Uint8Array[Hash.length]
+   * 
+   * @returns {Uint8Array[Hash.length]}
+   */
   async earlySecret() {
     if (this._earlySecret)
       return this._earlySecret;
@@ -2758,10 +2767,12 @@ var Secret = class {
     this.certificateVerifyMsg = new Handshake2(certificate_verify);
     return this.certificateVerifyMsg;
   }
-  async finished() {
-    const finished_key = await this.hkdfExpandLabel(this.secrets["s hs traffic"], "finished", salt0);
+  async finished(serverParamsAndAuthMsg) {
+    const finished_key = await this.hkdfExpandLabel(this.secrets[`${this.clientSide ? "c" : "s"} hs traffic`], "finished", salt0);
     if (this.certificateVerifyMsg)
       this.transcriptMsg = concat(this.transcriptMsg, this.certificateVerifyMsg);
+    if (this.clientSide && serverParamsAndAuthMsg)
+      this.transcriptMsg = concat(this.transcriptMsg, serverParamsAndAuthMsg);
     const transcriptHash = await crypto.subtle.digest(`SHA-${this.shaBit}`, this.transcriptMsg);
     const verify_data = await this.hkdfExtract(finished_key, new Uint8Array(transcriptHash));
     this.finishedMsg = new Handshake2(
